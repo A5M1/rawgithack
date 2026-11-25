@@ -155,16 +155,22 @@ HttpOnly `__githack_session` cookie.
 
 | Path | Purpose |
 | --- | --- |
-| `/admin` | The admin user's space, with extra user/invite controls |
-| `/<username>` | That user's space and short links |
+| `/dashboard` | SPA shell; redirects to `/dashboard/links` |
+| `/dashboard/links` | Create/list short links |
+| `/dashboard/account` | Account and sign-out |
+| `/dashboard/users` | Admin: users list |
+| `/dashboard/users/<username>` | Admin: user detail |
+| `/dashboard/invites` | Admin: registration invites |
+| `/admin` | Redirects admins to `/dashboard/users` |
 | `/register` | Enter an invite code |
 | `/register/<token>` | One-time invite registration form |
 | `/s/<id>` | Public short link |
 | `/owner/repo/ref/file` | Legacy/public proxied file path |
 | `/cdn/owner/repo/ref/file` | Legacy/public production path |
 
-`/admin/<username>` redirects to `/<username>` for compatibility. Admins can
-open any user's space; regular users can only open their own.
+`/<username>` redirects to `/dashboard` for the account owner and to
+`/dashboard/users/<username>` for admins. `/admin/<username>` redirects to the
+same admin user detail page.
 
 #### Registration
 
@@ -182,8 +188,8 @@ The older `REGISTRATION_SECRET` flow still works: set a secret and open
 `/register/<REGISTRATION_SECRET>` once. To allow another legacy registration,
 delete the `settings` document with `_id: "registration"` in MongoDB.
 
-Logged-in users create short links from their space. A short link is stored in
-`.proxies` with its owner:
+Logged-in users create short links from `/dashboard/links`. A short link is
+stored in `.proxies` with its owner:
 
 ```
 https://your-host/s/Ab3dE9xQ
@@ -193,6 +199,10 @@ Short links are public, proxy the file directly, and use the short id as their
 cache tag (`pAb3dE9xQ`). They can be created from GitHub/GitLab/Bitbucket/
 Gitea/Codeberg URLs or from generated githack URLs, and can be deleted from the
 user's space.
+
+The dashboard also accepts an optional custom name (`2-64` characters:
+letters, numbers, dash or underscore), producing links such as
+`https://your-host/s/my-file.js`. Custom names are unique.
 
 If `MONGODB_URI` is not set, authentication and short links are disabled and
 the public homepage is served without login.

@@ -569,11 +569,11 @@ test('dashboard auth protects pages while short links stay public', async () => 
     assert.equal(login.status, 303);
     const cookie = login.headers['set-cookie'][0].split(';')[0];
 
-    const dashboard = await request('/alice', { headers: { Cookie: cookie } });
+    const dashboard = await request('/dashboard', { headers: { Cookie: cookie } });
     assert.equal(dashboard.status, 200);
     assert.equal(dashboard.headers['cache-control'], 'no-store');
-    assert.match(dashboard.body, /<strong>Dashboard<\/strong>/);
-    assert.match(dashboard.body, /Signed in as alice/);
+    assert.match(dashboard.body, /const VIEWER = 'alice'/);
+    assert.match(dashboard.body, /data-route="\/dashboard\/links"/);
 
     const created = await request('/api/proxies', {
       method: 'POST',
@@ -675,12 +675,12 @@ test('secret registration URL works exactly once', async () => {
       body: 'username=alice&password=longpassword&confirm=longpassword',
     });
     assert.equal(created.status, 303);
-    assert.equal(created.headers.location, '/alice');
+    assert.equal(created.headers.location, '/dashboard');
 
     const cookie = created.headers['set-cookie'][0].split(';')[0];
-    const dashboard = await request('/alice', { headers: { Cookie: cookie } });
+    const dashboard = await request('/dashboard', { headers: { Cookie: cookie } });
     assert.equal(dashboard.status, 200);
-    assert.match(dashboard.body, /Signed in as alice/);
+    assert.match(dashboard.body, /const VIEWER = 'alice'/);
 
     const reuse = await request('/register/one-time-secret');
     assert.equal(reuse.status, 404);
@@ -730,33 +730,36 @@ test('admin invites, admin pages and per-user subdirectories', async () => {
 
     const adminLogin = await login('admin', 'admin-password');
     assert.equal(adminLogin.status, 303);
-    assert.equal(adminLogin.headers.location, '/admin');
+    assert.equal(adminLogin.headers.location, '/dashboard');
     const adminCookie = adminLogin.headers['set-cookie'][0].split(';')[0];
 
-    const adminPage = await request('/admin', { headers: { Cookie: adminCookie } });
+    const adminPage = await request('/dashboard/users', { headers: { Cookie: adminCookie } });
     assert.equal(adminPage.status, 200);
-    assert.match(adminPage.body, /Registration invites/);
+    assert.match(adminPage.body, /data-route="\/dashboard\/users"/);
 
     const bobLogin = await login('bob', 'bob-password');
     assert.equal(bobLogin.status, 303);
-    assert.equal(bobLogin.headers.location, '/bob');
+    assert.equal(bobLogin.headers.location, '/dashboard');
     const bobCookie = bobLogin.headers['set-cookie'][0].split(';')[0];
 
     const bobAdmin = await request('/admin', { headers: { Cookie: bobCookie } });
     assert.equal(bobAdmin.status, 403);
 
     const bobSpace = await request('/bob', { headers: { Cookie: bobCookie } });
-    assert.equal(bobSpace.status, 200);
-    assert.match(bobSpace.body, /<strong>Dashboard<\/strong>/);
-    assert.match(bobSpace.body, /Signed in as bob/);
+    assert.equal(bobSpace.status, 302);
+    assert.equal(bobSpace.headers.location, '/dashboard');
+
+    const bobDashboard = await request('/dashboard', { headers: { Cookie: bobCookie } });
+    assert.equal(bobDashboard.status, 200);
+    assert.match(bobDashboard.body, /const VIEWER = 'bob'/);
 
     const adminView = await request('/bob', { headers: { Cookie: adminCookie } });
-    assert.equal(adminView.status, 200);
-    assert.match(adminView.body, /Admin view for this user/);
+    assert.equal(adminView.status, 302);
+    assert.equal(adminView.headers.location, '/dashboard/users/bob');
 
     const legacyAdminPath = await request('/admin/bob', { headers: { Cookie: adminCookie } });
     assert.equal(legacyAdminPath.status, 301);
-    assert.equal(legacyAdminPath.headers.location, '/bob');
+    assert.equal(legacyAdminPath.headers.location, '/dashboard/users/bob');
 
     const invite = await request('/api/admin/invites', {
       method: 'POST',
@@ -792,7 +795,8 @@ test('admin invites, admin pages and per-user subdirectories', async () => {
     assert.equal(roleChange.status, 200);
 
     const bobNowAdmin = await request('/admin', { headers: { Cookie: bobCookie } });
-    assert.equal(bobNowAdmin.status, 200);
+    assert.equal(bobNowAdmin.status, 302);
+    assert.equal(bobNowAdmin.headers.location, '/dashboard/users');
 
     const deleteCharlie = await request('/api/admin/users/charlie', {
       method: 'DELETE',

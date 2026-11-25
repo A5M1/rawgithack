@@ -261,10 +261,10 @@ a { color: var(--color-link); }
   <nav class="nav">
     <ul>
       <!--# if expr="$rg_role = /admin/" -->
-      <li><a href="/admin">Admin</a></li>
+      <li><a href="/dashboard/users">Admin</a></li>
       <!--# endif -->
       <!--# if expr="$rg_user = /.+/" -->
-      <li><a href="/<!--# echo var="rg_user" -->">My space</a></li>
+      <li><a href="/dashboard">Dashboard</a></li>
       <li><a href="/logout">Sign out (<!--# echo var="rg_user" -->)</a></li>
       <!--# endif -->
     </ul>
