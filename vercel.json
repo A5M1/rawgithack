@@ -1,14 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "node",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/proxy"
-    }
-  ],
+  "framework": "express",
   "functions": {
-    "api/proxy.js": {
+    "server.js": {
       "includeFiles": "web/**"
     }
   }

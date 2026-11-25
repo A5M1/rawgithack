@@ -1,8 +1,7 @@
-# The nginx Containerfile is for self-hosting only. Hiding it from the upload
-# prevents Vercel from auto-selecting the Container preset instead of the
-# Node.js function in api/.
-Containerfile
+# The nginx Containerfile lives in docker/ so Vercel does not mistake this
+# project for a container app instead of the Express app in server.js.
 rawgithack.conf
+docker/
 t/
 test/
 .github/

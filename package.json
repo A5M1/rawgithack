@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "server.js",
   "description": "rawgit.hack Vercel adapter",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node server.js",
+    "start": "node server.js",
     "deploy": "vercel deploy",
     "test": "node --test",
     "vercel-build": "node -e \"\""
   },
   "dependencies": {
-    "@vercel/functions": "^3.11.3"
+    "@vercel/functions": "^3.11.3",
+    "express": "^5.3.0"
   }
 }

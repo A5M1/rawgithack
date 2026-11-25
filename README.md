@@ -23,10 +23,10 @@ Deploying to Vercel
 -------------------
 
 The canonical deployment is the nginx configuration in `rawgithack.conf`
-(the `Containerfile` builds it). The repository also contains a Vercel
+(the `docker/Containerfile` builds it). The repository also contains a Vercel
 adapter for running the same service without a server:
 
-- `api/proxy.js` — Vercel Node.js function entrypoint
+- `server.js` — Express entrypoint used by Vercel's Express preset
 - `lib/app.js` — request routing, proxying and phishing notice logic
 - `lib/config.js` — host, MIME type and cache-control tables ported from
   `rawgithack.conf`
@@ -37,12 +37,13 @@ Deploy with the Vercel CLI:
 
 ```sh
 npm install
-npx vercel dev      # local preview
+npm run dev         # local server on http://localhost:3000
 npx vercel deploy   # preview deployment
 npx vercel deploy --prod
 ```
 
-Or import the repository in the Vercel dashboard. No build command is needed.
+Or import the repository in the Vercel dashboard. The project uses Vercel's
+Express preset (`server.js`), so there is no build step.
 
 ### Hosting on your own domain
 
