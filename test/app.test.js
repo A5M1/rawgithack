@@ -544,8 +544,8 @@ test('dashboard auth protects pages while short links stay public', async () => 
 
   try {
     const anonymous = await request('/');
-    assert.equal(anonymous.status, 302);
-    assert.match(anonymous.headers.location, /^\/login\?next=/);
+    assert.equal(anonymous.status, 200);
+    assert.match(anonymous.body, /Sign in to the dashboard/);
 
     const publicFile = await request('/user/repo/branch/file.js');
     assert.equal(publicFile.status, 200);

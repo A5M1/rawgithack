@@ -127,6 +127,10 @@ When `MONGODB_URI` is configured, the homepage becomes a login-protected
 dashboard. Proxied file URLs and short links stay public, so they can be
 embedded without authentication.
 
+Unauthenticated visitors to `/` now see a short landing page explaining how
+this fork differs from the original rawgit.hack, with a **Sign in** link in the
+top-right. Signed-in users are redirected to `/dashboard`.
+
 Set these Vercel environment variables:
 
 ```sh

@@ -260,6 +260,9 @@ a { color: var(--color-link); }
   </h1>
   <nav class="nav">
     <ul>
+      <!--# if expr="$rg_show_signin = /1/" -->
+      <li><a href="/login">Sign in</a></li>
+      <!--# endif -->
       <!--# if expr="$rg_role = /admin/" -->
       <li><a href="/dashboard/users">Admin</a></li>
       <!--# endif -->
