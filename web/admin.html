@@ -1,0 +1,301 @@
+<!--# set var="title" value="Admin" -->
+<!--# set var="description" value="rawgit.hack - admin" -->
+
+<!--# include file="internal/pre.html" -->
+
+<style>
+.admin {
+  max-width: 950px;
+  margin: 0 auto;
+}
+.admin h2 {
+  font-size: 1.3em;
+  margin: 2em 0 .6em;
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+.admin .toolbar {
+  display: flex;
+  gap: .5em;
+  align-items: stretch;
+}
+.admin .toolbar input {
+  flex: 1;
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: .5em;
+}
+.admin table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin th, .admin td {
+  text-align: left;
+  padding: .6em .4em;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.admin th {
+  color: var(--color-text-muted);
+  font-weight: normal;
+  font-size: .85em;
+}
+.admin .role {
+  display: inline-block;
+  font-size: .8em;
+  border: 1px solid var(--color-border-ui);
+  padding: .1em .5em;
+}
+.admin .role.admin {
+  color: var(--color-success);
+  border-color: currentColor;
+}
+.admin .actions {
+  display: flex;
+  gap: .4em;
+  flex-wrap: wrap;
+}
+.admin button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-ui);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: .4em .8em;
+}
+.admin button:hover {
+  background: var(--color-border);
+}
+.admin .invite-result {
+  display: flex;
+  margin-top: .7em;
+}
+.admin .invite-result input {
+  flex: 1;
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: .5em;
+}
+.admin .muted {
+  color: var(--color-text-muted);
+}
+.admin .status-used {
+  color: var(--color-text-muted);
+}
+.admin .status-unused {
+  color: var(--color-success);
+}
+.admin code {
+  word-break: break-all;
+}
+</style>
+
+<p class="hero">
+  <strong>Admin</strong>
+  <span class="desc">Users and registration invites.</span>
+</p>
+
+<div class="admin">
+  <h2>Users</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody id="user-list">
+      <tr><td colspan="3" class="muted">Loading…</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Registration invites</h2>
+  <div class="toolbar">
+    <input id="invite-result" readonly placeholder="Create an invite to get a one-time registration URL">
+    <button id="invite-copy" type="button" disabled>copy</button>
+    <button id="invite-create" type="button">create invite</button>
+  </div>
+
+  <table style="margin-top: 1em;">
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Status</th>
+        <th>Used by</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="invite-list">
+      <tr><td colspan="4" class="muted">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const userList = document.getElementById('user-list');
+const inviteList = document.getElementById('invite-list');
+const inviteResult = document.getElementById('invite-result');
+const inviteCopy = document.getElementById('invite-copy');
+const inviteCreate = document.getElementById('invite-create');
+
+const setText = (element, value) => {
+  element.replaceChildren(document.createTextNode(value ?? ''));
+};
+
+const cell = (value, className) => {
+  const td = document.createElement('td');
+  if (className) td.className = className;
+  setText(td, value);
+  return td;
+};
+
+const copy = async (value, button) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    const label = button.textContent;
+    button.textContent = 'copied!';
+    setTimeout(() => { button.textContent = label; }, 1000);
+  } catch {
+    // Clipboard access can be denied.
+  }
+};
+
+const formatDate = value => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+};
+
+const api = async (path, options = {}) => {
+  const response = await fetch(path, {
+    ...options,
+    headers: { Accept: 'application/json', ...(options.headers || {}) },
+  });
+  if (response.status === 401) {
+    location.href = '/login';
+    throw new Error('unauthorized');
+  }
+  if (response.status === 403) {
+    location.href = '/';
+    throw new Error('forbidden');
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'request failed');
+  return data;
+};
+
+const renderUsers = users => {
+  userList.replaceChildren();
+
+  for (const user of users) {
+    const row = document.createElement('tr');
+
+    const name = document.createElement('td');
+    const link = document.createElement('a');
+    link.href = '/admin/' + encodeURIComponent(user.username);
+    link.textContent = user.username;
+    name.append(link);
+
+    const role = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = 'role' + (user.role === 'admin' ? ' admin' : '');
+    badge.textContent = user.role;
+    role.append(badge);
+
+    row.append(name, role, cell(formatDate(user.createdAt), 'muted'));
+    userList.append(row);
+  }
+};
+
+const renderInvites = invites => {
+  inviteList.replaceChildren();
+
+  if (!invites.length) {
+    const row = document.createElement('tr');
+    const td = cell('No invites yet.', 'muted');
+    td.colSpan = 4;
+    row.append(td);
+    inviteList.append(row);
+    return;
+  }
+
+  for (const invite of invites) {
+    const row = document.createElement('tr');
+    row.append(cell(formatDate(invite.createdAt), 'muted'));
+
+    const status = document.createElement('td');
+    status.className = invite.usedAt ? 'status-used' : 'status-unused';
+    status.textContent = invite.usedAt ? 'used' : 'unused';
+    row.append(status, cell(invite.usedBy || '—', 'muted'));
+
+    const action = document.createElement('td');
+    if (!invite.usedAt) {
+      const revoke = document.createElement('button');
+      revoke.type = 'button';
+      revoke.textContent = 'revoke';
+      revoke.addEventListener('click', async () => {
+        if (!confirm('Revoke this invite?')) return;
+        revoke.disabled = true;
+        await api('/api/admin/invites/' + encodeURIComponent(invite.id), { method: 'DELETE' });
+        loadInvites();
+      });
+      action.append(revoke);
+    }
+    row.append(action);
+    inviteList.append(row);
+  }
+};
+
+const loadUsers = async () => {
+  try {
+    const data = await api('/api/admin/users');
+    renderUsers(data.users || []);
+  } catch {
+    userList.replaceChildren();
+    const row = document.createElement('tr');
+    const td = cell('Could not load users.', 'muted');
+    td.colSpan = 3;
+    row.append(td);
+    userList.append(row);
+  }
+};
+
+const loadInvites = async () => {
+  try {
+    const data = await api('/api/admin/invites');
+    renderInvites(data.invites || []);
+  } catch {
+    inviteList.replaceChildren();
+    const row = document.createElement('tr');
+    const td = cell('Could not load invites.', 'muted');
+    td.colSpan = 4;
+    row.append(td);
+    inviteList.append(row);
+  }
+};
+
+inviteCreate.addEventListener('click', async () => {
+  inviteCreate.disabled = true;
+  try {
+    const data = await api('/api/admin/invites', { method: 'POST' });
+    inviteResult.value = data.url;
+    inviteCopy.disabled = false;
+    inviteResult.focus();
+    inviteResult.select();
+    loadInvites();
+  } catch {
+    inviteResult.value = 'Could not create invite.';
+  } finally {
+    inviteCreate.disabled = false;
+  }
+});
+
+inviteCopy.addEventListener('click', () => copy(inviteResult.value, inviteCopy));
+
+loadUsers();
+loadInvites();
+</script>
+
+<!--# include file="internal/post.html" -->

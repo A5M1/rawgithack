@@ -10,10 +10,12 @@ import { MongoClient } from 'mongodb';
 import { hashPassword, isUsername } from '../lib/auth.js';
 import { DEFAULT_DB_NAME } from '../lib/db.js';
 
-const [, , username, password] = process.argv;
+const args = process.argv.slice(2);
+const admin = args.includes('--admin');
+const [username, password] = args.filter((arg) => arg !== '--admin');
 
 if (!username || !password) {
-  console.error('Usage: npm run create-user -- <username> <password>');
+  console.error('Usage: npm run create-user -- <username> <password> [--admin]');
   process.exit(1);
 }
 
@@ -43,13 +45,19 @@ try {
   await users.updateOne(
     { username },
     {
-      $set: { passwordHash: await hashPassword(password), updatedAt: new Date() },
+      $set: {
+        passwordHash: await hashPassword(password),
+        role: admin ? 'admin' : 'user',
+        updatedAt: new Date(),
+      },
       $setOnInsert: { createdAt: new Date() },
     },
     { upsert: true },
   );
 
-  console.log(`User "${username}" created/updated in ${db.databaseName}.users`);
+  console.log(
+    `User "${username}" created/updated in ${db.databaseName}.users (role: ${admin ? 'admin' : 'user'})`,
+  );
 } finally {
   await client.close();
 }

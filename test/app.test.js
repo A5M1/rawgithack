@@ -17,6 +17,7 @@ class FakeStore {
     this.users = new Map();
     this.sessions = new Map();
     this.proxies = new Map();
+    this.invites = new Map();
     this.registrationUsed = false;
   }
 
@@ -24,13 +25,68 @@ class FakeStore {
     return this.users.get(username) || null;
   }
 
-  async createUser(username, passwordHash) {
+  async createUser(username, passwordHash, role = 'user') {
     if (this.users.has(username)) {
       const error = new Error('duplicate key');
       error.code = 11000;
       throw error;
     }
-    this.users.set(username, { username, passwordHash, createdAt: new Date() });
+    this.users.set(username, { username, passwordHash, role, createdAt: new Date() });
+  }
+
+  async listUsers() {
+    return [...this.users.values()].map(({ passwordHash, ...rest }) => rest);
+  }
+
+  async setUserRole(username, role) {
+    const user = this.users.get(username);
+    if (!user) return false;
+    user.role = role;
+    return true;
+  }
+
+  async deleteUser(username) {
+    if (!this.users.delete(username)) return false;
+    for (const [hash, session] of this.sessions) {
+      if (session.username === username) this.sessions.delete(hash);
+    }
+    for (const [id, proxy] of this.proxies) {
+      if (proxy.owner === username) this.proxies.delete(id);
+    }
+    return true;
+  }
+
+  async createInvite(record) {
+    this.invites.set(record._id, record);
+    return record;
+  }
+
+  async getInvite(id) {
+    return this.invites.get(id) || null;
+  }
+
+  async listInvites() {
+    return [...this.invites.values()];
+  }
+
+  async deleteInvite(id) {
+    return this.invites.delete(id);
+  }
+
+  async reserveInvite(id, username) {
+    const invite = this.invites.get(id);
+    if (!invite || invite.usedAt) return false;
+    invite.usedAt = new Date();
+    invite.usedBy = username;
+    return true;
+  }
+
+  async releaseInvite(id) {
+    const invite = this.invites.get(id);
+    if (invite) {
+      delete invite.usedAt;
+      delete invite.usedBy;
+    }
   }
 
   async isRegistrationUsed() {
@@ -626,6 +682,117 @@ test('secret registration URL works exactly once', async () => {
   } finally {
     if (previous === undefined) delete process.env.REGISTRATION_SECRET;
     else process.env.REGISTRATION_SECRET = previous;
+    currentStore = null;
+  }
+});
+
+test('admin invites, admin pages and per-user subdirectories', async () => {
+  const store = new FakeStore();
+  store.users.set('admin', {
+    username: 'admin',
+    passwordHash: await hashPassword('admin-password'),
+    role: 'admin',
+    createdAt: new Date(),
+  });
+  store.users.set('bob', {
+    username: 'bob',
+    passwordHash: await hashPassword('bob-password'),
+    role: 'user',
+    createdAt: new Date(),
+  });
+  currentStore = store;
+
+  const login = async (username, password) => {
+    const response = await request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `username=${username}&password=${password}`,
+    });
+    return response;
+  };
+
+  try {
+    const anonymousAdmin = await request('/admin');
+    assert.equal(anonymousAdmin.status, 302);
+    assert.match(anonymousAdmin.headers.location, /^\/login/);
+
+    const adminLogin = await login('admin', 'admin-password');
+    assert.equal(adminLogin.status, 303);
+    assert.equal(adminLogin.headers.location, '/admin');
+    const adminCookie = adminLogin.headers['set-cookie'][0].split(';')[0];
+
+    const adminPage = await request('/admin', { headers: { Cookie: adminCookie } });
+    assert.equal(adminPage.status, 200);
+    assert.match(adminPage.body, /Registration invites/);
+
+    const bobLogin = await login('bob', 'bob-password');
+    assert.equal(bobLogin.status, 303);
+    assert.equal(bobLogin.headers.location, '/');
+    const bobCookie = bobLogin.headers['set-cookie'][0].split(';')[0];
+
+    const bobAdmin = await request('/admin', { headers: { Cookie: bobCookie } });
+    assert.equal(bobAdmin.status, 403);
+
+    const bobSpace = await request('/admin/bob', { headers: { Cookie: bobCookie } });
+    assert.equal(bobSpace.status, 200);
+    assert.match(bobSpace.body, /Your user space/);
+
+    const adminView = await request('/admin/bob', { headers: { Cookie: adminCookie } });
+    assert.equal(adminView.status, 200);
+    assert.match(adminView.body, /Admin view for this user/);
+
+    const invite = await request('/api/admin/invites', {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+    assert.equal(invite.status, 201);
+    const inviteData = JSON.parse(invite.body);
+    const invitePath = new URL(inviteData.url).pathname;
+
+    const registerPage = await request(invitePath);
+    assert.equal(registerPage.status, 200);
+
+    const register = await request(invitePath, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'username=charlie&password=charlie-password&confirm=charlie-password',
+    });
+    assert.equal(register.status, 303);
+
+    const reuse = await request(invitePath);
+    assert.equal(reuse.status, 404);
+
+    const users = await request('/api/admin/users', { headers: { Cookie: adminCookie } });
+    assert.equal(users.status, 200);
+    const usernames = JSON.parse(users.body).users.map((user) => user.username);
+    assert.deepEqual(usernames.sort(), ['admin', 'bob', 'charlie']);
+
+    const roleChange = await request('/api/admin/users/bob', {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'admin' }),
+    });
+    assert.equal(roleChange.status, 200);
+
+    const bobNowAdmin = await request('/admin', { headers: { Cookie: bobCookie } });
+    assert.equal(bobNowAdmin.status, 200);
+
+    const deleteCharlie = await request('/api/admin/users/charlie', {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie },
+    });
+    assert.equal(deleteCharlie.status, 200);
+    assert.equal(store.users.has('charlie'), false);
+
+    const selfDelete = await request('/api/admin/users/admin', {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie },
+    });
+    assert.equal(selfDelete.status, 400);
+
+    const legacyFile = await request('/user/repo/branch/file.js');
+    assert.equal(legacyFile.status, 200);
+  } finally {
     currentStore = null;
   }
 });
