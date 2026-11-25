@@ -264,7 +264,7 @@ a { color: var(--color-link); }
       <li><a href="/admin">Admin</a></li>
       <!--# endif -->
       <!--# if expr="$rg_user = /.+/" -->
-      <li><a href="/admin/<!--# echo var="rg_user" -->">My space</a></li>
+      <li><a href="/<!--# echo var="rg_user" -->">My space</a></li>
       <li><a href="/logout">Sign out (<!--# echo var="rg_user" -->)</a></li>
       <!--# endif -->
     </ul>

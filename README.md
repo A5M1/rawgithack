@@ -138,40 +138,52 @@ Never commit the connection string. If it has been exposed, rotate the
 database password in MongoDB Atlas. Vercel Functions use dynamic IPs, so the
 Atlas network access list normally needs `0.0.0.0/0` (or a restricted proxy).
 
-Create dashboard users from your machine (there is no public signup):
+Create an admin from your machine (there is no public signup):
 
 ```sh
-MONGODB_URI='mongodb+srv://...' npm run create-user -- alice 'a-long-password'
+MONGODB_URI='mongodb+srv://...' npm run create-user -- admin 'a-long-password' --admin
 ```
+
+The username `admin` always has admin access. Other users can also be promoted
+with the `role: "admin"` field in MongoDB or from the admin page.
 
 Users are stored in `<MONGODB_DB>.users` with scrypt password hashes. Sessions
 are server-side documents in `.sessions` with a TTL index and are sent as an
 HttpOnly `__githack_session` cookie.
 
-#### One-time secret registration URL
+#### Pages and per-user paths
 
-Set a long random secret and open the matching URL once:
+| Path | Purpose |
+| --- | --- |
+| `/admin` | The admin user's space, with extra user/invite controls |
+| `/<username>` | That user's space and short links |
+| `/register` | Enter an invite code |
+| `/register/<token>` | One-time invite registration form |
+| `/s/<id>` | Public short link |
+| `/owner/repo/ref/file` | Legacy/public proxied file path |
+| `/cdn/owner/repo/ref/file` | Legacy/public production path |
 
-```sh
-REGISTRATION_SECRET=<random-secret>
+`/admin/<username>` redirects to `/<username>` for compatibility. Admins can
+open any user's space; regular users can only open their own.
+
+#### Registration
+
+Admins create single-use invite links from `/admin`. Each generated URL looks
+like:
+
+```
+https://your-host/register/<invite-token>
 ```
 
-```
-https://your-host/register/<random-secret>
-```
+Opening it shows the registration form, creates one account, and consumes the
+invite. Users can also paste the invite code at `/register`.
 
-That URL shows a registration form and creates one account. After the account
-is created the link is permanently consumed. Registration responses send
-`Referrer-Policy: no-referrer` and `Cache-Control: no-store` so the secret is
-not leaked through referrers or caches.
+The older `REGISTRATION_SECRET` flow still works: set a secret and open
+`/register/<REGISTRATION_SECRET>` once. To allow another legacy registration,
+delete the `settings` document with `_id: "registration"` in MongoDB.
 
-To allow another registration, delete the `settings` document with
-`_id: "registration"` in MongoDB. If `REGISTRATION_SECRET` is not set,
-registration is disabled. Additional users can always be created with
-`npm run create-user`.
-
-Logged-in users can create short links from the dashboard. A short link is
-stored in `.proxies` with its owner:
+Logged-in users create short links from their space. A short link is stored in
+`.proxies` with its owner:
 
 ```
 https://your-host/s/Ab3dE9xQ
@@ -180,7 +192,7 @@ https://your-host/s/Ab3dE9xQ
 Short links are public, proxy the file directly, and use the short id as their
 cache tag (`pAb3dE9xQ`). They can be created from GitHub/GitLab/Bitbucket/
 Gitea/Codeberg URLs or from generated githack URLs, and can be deleted from the
-dashboard.
+user's space.
 
 If `MONGODB_URI` is not set, authentication and short links are disabled and
 the public homepage is served without login.

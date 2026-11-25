@@ -1,0 +1,54 @@
+<!--# set var="title" value="Register" -->
+<!--# set var="description" value="${rg_site_name} - register" -->
+
+<!--# include file="internal/pre.html" -->
+
+<style>
+.register-start {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.register-start p {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.register-start .token-row {
+  display: flex;
+}
+.register-start input {
+  flex: 1;
+  box-sizing: border-box;
+  padding: .8em;
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.register-start button {
+  padding: .8em 1em;
+}
+.register-start .login-link {
+  margin-top: 1.5em;
+}
+</style>
+
+<p class="hero">
+  <strong>Register</strong>
+  <span class="desc">Registration is invite-only.</span>
+</p>
+
+<div class="register-start">
+  <p>Paste the invite code from your registration link.</p>
+
+  <form method="POST" action="/register">
+    <div class="token-row url-container">
+      <input name="token" placeholder="Invite code" autocomplete="off" required autofocus>
+      <button type="submit" class="url-action-button">continue</button>
+    </div>
+  </form>
+
+  <p class="login-link">
+    Already have an account? <a href="/login">Sign in</a>
+  </p>
+</div>
+
+<!--# include file="internal/post.html" -->

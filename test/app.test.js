@@ -569,7 +569,7 @@ test('dashboard auth protects pages while short links stay public', async () => 
     assert.equal(login.status, 303);
     const cookie = login.headers['set-cookie'][0].split(';')[0];
 
-    const dashboard = await request('/', { headers: { Cookie: cookie } });
+    const dashboard = await request('/alice', { headers: { Cookie: cookie } });
     assert.equal(dashboard.status, 200);
     assert.equal(dashboard.headers['cache-control'], 'no-store');
     assert.match(dashboard.body, /<strong>Dashboard<\/strong>/);
@@ -652,6 +652,18 @@ test('secret registration URL works exactly once', async () => {
     const wrong = await request('/register/not-the-secret');
     assert.equal(wrong.status, 404);
 
+    const start = await request('/register');
+    assert.equal(start.status, 200);
+    assert.match(start.body, /Registration is invite-only/);
+
+    const startSubmit = await request('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'token=one-time-secret',
+    });
+    assert.equal(startSubmit.status, 303);
+    assert.equal(startSubmit.headers.location, '/register/one-time-secret');
+
     const page = await request('/register/one-time-secret');
     assert.equal(page.status, 200);
     assert.match(page.body, /Create account/);
@@ -663,10 +675,10 @@ test('secret registration URL works exactly once', async () => {
       body: 'username=alice&password=longpassword&confirm=longpassword',
     });
     assert.equal(created.status, 303);
-    assert.equal(created.headers.location, '/');
+    assert.equal(created.headers.location, '/alice');
 
     const cookie = created.headers['set-cookie'][0].split(';')[0];
-    const dashboard = await request('/', { headers: { Cookie: cookie } });
+    const dashboard = await request('/alice', { headers: { Cookie: cookie } });
     assert.equal(dashboard.status, 200);
     assert.match(dashboard.body, /Signed in as alice/);
 
@@ -727,19 +739,24 @@ test('admin invites, admin pages and per-user subdirectories', async () => {
 
     const bobLogin = await login('bob', 'bob-password');
     assert.equal(bobLogin.status, 303);
-    assert.equal(bobLogin.headers.location, '/');
+    assert.equal(bobLogin.headers.location, '/bob');
     const bobCookie = bobLogin.headers['set-cookie'][0].split(';')[0];
 
     const bobAdmin = await request('/admin', { headers: { Cookie: bobCookie } });
     assert.equal(bobAdmin.status, 403);
 
-    const bobSpace = await request('/admin/bob', { headers: { Cookie: bobCookie } });
+    const bobSpace = await request('/bob', { headers: { Cookie: bobCookie } });
     assert.equal(bobSpace.status, 200);
-    assert.match(bobSpace.body, /Your user space/);
+    assert.match(bobSpace.body, /<strong>Dashboard<\/strong>/);
+    assert.match(bobSpace.body, /Signed in as bob/);
 
-    const adminView = await request('/admin/bob', { headers: { Cookie: adminCookie } });
+    const adminView = await request('/bob', { headers: { Cookie: adminCookie } });
     assert.equal(adminView.status, 200);
     assert.match(adminView.body, /Admin view for this user/);
+
+    const legacyAdminPath = await request('/admin/bob', { headers: { Cookie: adminCookie } });
+    assert.equal(legacyAdminPath.status, 301);
+    assert.equal(legacyAdminPath.headers.location, '/bob');
 
     const invite = await request('/api/admin/invites', {
       method: 'POST',
