@@ -80,7 +80,7 @@ keys in the Vercel project settings. `.env.local` is gitignored.
 | `TRUST_PROXY` | No | Set to `1` behind a trusted reverse proxy |
 | `GITHACK_BASE_DOMAIN` | No | Your domain for subdomain mode |
 | `GITHACK_CANONICAL_HOST` | No | Canonical/homepage host override |
-| `GITHACK_SITE_NAME` | No | Brand name shown in titles/FAQ, defaults to the base domain |
+| `GITHACK_SITE_NAME` | No | Brand name shown in titles/header, default `Source CDN` |
 | `GITHACK_SOURCE_URL` | No | Footer source-code link, defaults to the upstream repo |
 | `GITHACK_WEB_ROOT` | No | Template directory, default `web` |
 | `PORT` | Local only | Local server port, default `3000` |
