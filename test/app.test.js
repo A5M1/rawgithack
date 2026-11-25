@@ -331,3 +331,70 @@ test('GITHACK_CANONICAL_HOST can move the homepage and raw host', async () => {
     else process.env.GITHACK_CANONICAL_HOST = previousCanonical;
   }
 });
+
+test('Vercel deployment hosts use the Vercel URL with path prefixes', async () => {
+  const host = 'demo-githack.vercel.app';
+
+  const index = await request('/', { headers: { Host: host } });
+  assert.equal(index.status, 200);
+  assert.match(index.body, /const BASE_DOMAIN = 'demo-githack\.vercel\.app'/);
+  assert.match(index.body, /const CANONICAL_HOST = 'demo-githack\.vercel\.app'/);
+  assert.match(index.body, /const SINGLE_HOST = '1'/);
+
+  const dev = await request('/user/repo/branch/file.js', { headers: { Host: host } });
+  assert.equal(dev.status, 200);
+  assert.equal(
+    calls.at(-1).url,
+    'https://raw.githubusercontent.com/user/repo/branch/file.js',
+  );
+
+  const cdn = await request('/cdn/user/repo/tag/file.js', { headers: { Host: host } });
+  assert.equal(cdn.status, 200);
+  assert.equal(
+    calls.at(-1).url,
+    'https://raw.githubusercontent.com/user/repo/tag/file.js',
+  );
+  assert.equal(cdn.headers['cache-control'], 'max-age=31536000, public, immutable');
+
+  await request('/gl/group/proj/raw/branch/file.js', { headers: { Host: host } });
+  assert.equal(calls.at(-1).url, 'https://gitlab.com/group/proj/raw/branch/file.js');
+
+  const unknown = await request('/cdn/user/repo/tag/file.unknown', {
+    headers: { Host: host },
+  });
+  assert.equal(unknown.status, 301);
+  assert.equal(
+    unknown.headers.location,
+    'https://raw.githubusercontent.com/user/repo/tag/file.unknown',
+  );
+
+  const notice = await request('/cdn/user/repo/tag/index.html', {
+    headers: { Host: host, 'Sec-Fetch-Dest': 'document' },
+  });
+  assert.equal(notice.status, 460);
+  assert.match(
+    notice.body,
+    /value="https:\/\/demo-githack\.vercel\.app\/cdn\/user\/repo\/tag\/index\.html"/,
+  );
+  assert.match(
+    notice.body,
+    /href="https:\/\/raw\.githubusercontent\.com\/user\/repo\/tag\/index\.html"/,
+  );
+
+  const post = await request('/cdn/user/repo/tag/index.html', {
+    method: 'POST',
+    headers: {
+      Host: host,
+      Referer: `https://${host}/cdn/user/repo/tag/index.html`,
+    },
+  });
+  assert.equal(post.status, 303);
+  assert.equal(
+    post.headers.location,
+    `https://${host}/cdn/user/repo/tag/index.html`,
+  );
+  assert.equal(
+    post.headers['set-cookie'][0],
+    '__Http-phish=1; Path=/cdn/user/repo/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure',
+  );
+});

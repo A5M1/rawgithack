@@ -45,6 +45,24 @@ npx vercel deploy --prod
 Or import the repository in the Vercel dashboard. The project uses Vercel's
 Express preset (`server.js`), so there is no build step.
 
+### Using the Vercel URL directly
+
+If `GITHACK_BASE_DOMAIN` is not set, a `*.vercel.app` deployment host is used
+as both the base and canonical host automatically. Because wildcard
+subdomains are not available on `vercel.app`, platform and CDN selection move
+into the first path segment:
+
+| URL | Meaning |
+| --- | --- |
+| `https://project.vercel.app/user/repo/branch/file` | development raw URL |
+| `https://project.vercel.app/cdn/user/repo/tag/file` | production raw URL |
+| `https://project.vercel.app/gl/group/repo/raw/branch/file` | GitLab |
+| `https://project.vercel.app/gistcdn/user/id/raw/file` | Gist CDN |
+| `https://project.vercel.app/bb/...`, `/gt/...`, `/cb/...` | other platforms |
+
+The homepage detects this mode and generates the same path-based URLs. The
+same prefixes work on preview deployment URLs.
+
 ### Hosting on your own domain
 
 Set one environment variable in the Vercel project:

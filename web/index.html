@@ -287,6 +287,7 @@ pre { overflow-x: auto; }
 <script>
 const BASE_DOMAIN = '<!--# echo var="rg_base_domain" default="githack.com" -->';
 const CANONICAL_HOST = '<!--# echo var="rg_canonical_host" default="raw.githack.com" -->';
+const SINGLE_HOST = '<!--# echo var="rg_single_host" default="0" -->' === '1';
 
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -304,6 +305,59 @@ const isGithackUrl = url => {
   } catch {
     return false;
   }
+};
+
+const SINGLE_HOST_PREFIXES = new Set([
+  'raw', 'rawcdn', 'cdn', 'gist', 'gistcdn', 'gl', 'glcdn',
+  'bb', 'bbcdn', 'gt', 'gtcdn', 'cb', 'cbcdn'
+]);
+
+// On a single host (e.g. *.vercel.app) platform and CDN selection live in the
+// first path segment instead of a subdomain.
+const toPublicUrl = url => {
+  if (!SINGLE_HOST) return url;
+
+  return url.replace(/^(\w+:\/\/)([^\/]+)(\/.*)?$/, (whole, scheme, host, rest = '') => {
+    if (host !== BASE_DOMAIN && host !== CANONICAL_HOST && !host.endsWith(`.${BASE_DOMAIN}`)) {
+      return whole;
+    }
+
+    const label = host.split('.')[0];
+    let prefix = 'raw';
+    let cdn = false;
+
+    if (host === BASE_DOMAIN || host === CANONICAL_HOST) {
+      prefix = 'raw';
+    } else if (label === 'rawcdn') {
+      prefix = 'raw';
+      cdn = true;
+    } else if (label.endsWith('cdn')) {
+      prefix = label.slice(0, -3);
+      cdn = true;
+    } else {
+      prefix = label;
+    }
+
+    const pathPrefix = prefix === 'raw'
+      ? (cdn ? 'cdn' : '')
+      : `${prefix}${cdn ? 'cdn' : ''}`;
+
+    return `${scheme}${CANONICAL_HOST}${pathPrefix ? `/${pathPrefix}` : ''}${rest}`;
+  });
+};
+
+const fromPublicUrl = url => {
+  if (!SINGLE_HOST) return url;
+
+  return url.replace(/^(\w+:\/\/)([^\/]+)\/([^\/]+)(\/.*)?$/, (whole, scheme, host, segment, rest = '') => {
+    if (host !== CANONICAL_HOST) return whole;
+
+    const prefix = segment.toLowerCase();
+    if (!SINGLE_HOST_PREFIXES.has(prefix)) return whole;
+
+    const hostPrefix = prefix === 'cdn' ? 'rawcdn' : prefix;
+    return `${scheme}${hostPrefix}.${BASE_DOMAIN}${rest || '/'}`;
+  });
 };
 
 const TEMPLATES = [
@@ -374,8 +428,8 @@ const prodPurgeStatus = document.getElementById('url-prod-purge-status');
 const sriGenButton    = document.getElementById('url-sri-gen');
 let rawFileUrl;
 
-devEl.placeholder  = `https://${hostName('raw')}/user/repo/branch/file`;
-prodEl.placeholder = `https://${hostName('raw', true)}/user/repo/tag/file`;
+devEl.placeholder  = toPublicUrl(`https://${hostName('raw')}/user/repo/branch/file`);
+prodEl.placeholder = toPublicUrl(`https://${hostName('raw', true)}/user/repo/tag/file`);
 
 const copyWithFeedback = (button, text, label) => {
   navigator.clipboard.writeText(text).then(() => {
@@ -423,12 +477,16 @@ urlEl.addEventListener('input', () => {
   formatTimer = setTimeout(formatURL, 150);
 }, false);
 
-const decdn = url => url.replace(/^(\w+:\/\/)([^\/]+)(.*)$/, (_, scheme, host, rest) => {
-  if (host === hostName('raw', true)) return `${scheme}${CANONICAL_HOST}${rest}`;
-  const parts = host.split('.');
-  if (parts[0].endsWith('cdn')) parts[0] = parts[0].slice(0, -3);
-  return `${scheme}${parts.join('.')}${rest}`;
-});
+const decdn = url => {
+  if (SINGLE_HOST) url = fromPublicUrl(url);
+
+  return url.replace(/^(\w+:\/\/)([^\/]+)(.*)$/, (_, scheme, host, rest) => {
+    if (host === hostName('raw', true)) return `${scheme}${CANONICAL_HOST}${rest}`;
+    const parts = host.split('.');
+    if (parts[0].endsWith('cdn')) parts[0] = parts[0].slice(0, -3);
+    return `${scheme}${parts.join('.')}${rest}`;
+  });
+};
 
 urlEl.value = new URLSearchParams(location.search).get('url') ?? '';
 formatURL();
@@ -443,8 +501,9 @@ function formatURL() {
   rawFileUrl = null;
 
   if (isGithackUrl(url)) {
-    devEl.value = decdn(url);
-    prodEl.value = cdnize(decdn(url));
+    const devUrl = decdn(url);
+    devEl.value = toPublicUrl(devUrl);
+    prodEl.value = toPublicUrl(cdnize(devUrl));
     setValid();
     return;
   }
@@ -456,19 +515,19 @@ function formatURL() {
       new RegExp(`^(\\w+://${rawHost})/([^/]+)/([^/]+)/([^/]+)/(.*)$`, 'i'),
     );
     if (!matches) {
-      devEl.value = ghUrl;
-      prodEl.value = cdnize(ghUrl);
+      devEl.value = toPublicUrl(ghUrl);
+      prodEl.value = toPublicUrl(cdnize(ghUrl));
       rawFileUrl = rawUrl;
       setValid();
     } else {
       const [, origin, user, repo, ref, file] = matches;
-      devEl.value = ghUrl;
+      devEl.value = toPublicUrl(ghUrl);
       const apiUrl = `${GITHUB_API_URL}/repos/${user}/${repo}/git/refs/heads/${ref}`;
       fetch(apiUrl)
         .then(res => { if (res.ok) return res.json(); })
         .then(data => {
           const resolvedRef = data && data.object && data.object.sha ? data.object.sha : ref;
-          prodEl.value = cdnize(`${origin}/${resolvedRef}/${file}`);
+          prodEl.value = toPublicUrl(cdnize(`${origin}/${resolvedRef}/${file}`));
           rawFileUrl = `https://raw.githubusercontent.com/${user}/${repo}/${resolvedRef}/${file}`;
           setValid();
         });
@@ -485,8 +544,8 @@ function formatURL() {
           if (!firstFile || !firstFile.raw_url) return;
           const [converted, raw] = convertUrl(firstFile.raw_url) ?? [];
           if (converted) {
-            devEl.value = converted;
-            prodEl.value = cdnize(converted);
+            devEl.value = toPublicUrl(converted);
+            prodEl.value = toPublicUrl(cdnize(converted));
             rawFileUrl = raw;
             setValid();
           }
