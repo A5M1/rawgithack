@@ -228,3 +228,16 @@ This repository is a custom fork of
 upstream project and is not affiliated with or endorsed by rawgit.hack, its
 maintainer, or any source-hosting service. The original project and its license
 remain the work of their respective authors.
+
+### AI DISCLOSURE
+
+Parts of this repo was written with assitive generative artificial itelligence.
+
+Running on a colocated ecologically friendly serverfarm, the machine running this model is purchased 100% using my own money.
+
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-yellow)](https://huggingface.co/OBLITERATUS/Gemma-4-12B-OBLITERATED)
+
+Within testing, this fork is not vulnerable (to the best of my knowledge), to any form of attack. With that being said, it's best to do your own research before running this project, I do not provide and warrenty on this repo/fork. You have been warned.
+
+All hail freedom, 
+with lots of love, ava <3. 
