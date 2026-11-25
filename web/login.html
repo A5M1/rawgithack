@@ -1,0 +1,67 @@
+<!--# set var="title" value="Sign in" -->
+<!--# set var="description" value="rawgit.hack - sign in" -->
+
+<!--# include file="internal/pre.html" -->
+
+<style>
+.auth {
+  max-width: 420px;
+  margin: 0 auto;
+}
+.auth .field {
+  display: block;
+  margin: 1em 0;
+}
+.auth .field span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: .9em;
+  margin-bottom: .3em;
+}
+.auth input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: .7em;
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.auth button {
+  width: 100%;
+  padding: .8em;
+  font-size: 1em;
+}
+.auth-error {
+  color: var(--color-error);
+  text-align: center;
+}
+</style>
+
+<p class="hero">
+  <strong>Sign in</strong>
+  <span class="desc">Sign in to manage your short proxy links.</span>
+</p>
+
+<div class="auth">
+  <!--# if expr="$error = /.+/" -->
+  <p class="auth-error"><!--# echo var="error" --></p>
+  <!--# endif -->
+
+  <form method="POST" action="/login">
+    <input type="hidden" name="next" value="<!--# echo var="next" -->">
+
+    <label class="field">
+      <span>Username</span>
+      <input name="username" autocomplete="username" required autofocus>
+    </label>
+
+    <label class="field">
+      <span>Password</span>
+      <input name="password" type="password" autocomplete="current-password" required>
+    </label>
+
+    <button type="submit" class="url-action-button">Sign in</button>
+  </form>
+</div>
+
+<!--# include file="internal/post.html" -->

@@ -4,6 +4,8 @@ rawgithack.conf
 docker/
 t/
 test/
+scripts/
 .github/
 LICENSE
 README.md
+.env*

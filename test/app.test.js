@@ -3,12 +3,87 @@ import http from 'node:http';
 import { after, before, beforeEach, test } from 'node:test';
 
 import { handle } from '../lib/app.js';
+import { hashPassword } from '../lib/auth.js';
 import { resetHotFiles } from '../lib/config.js';
 
 let server;
 let port;
 let fetchImpl;
 let calls;
+let currentStore = null;
+
+class FakeStore {
+  constructor() {
+    this.users = new Map();
+    this.sessions = new Map();
+    this.proxies = new Map();
+    this.registrationUsed = false;
+  }
+
+  async getUser(username) {
+    return this.users.get(username) || null;
+  }
+
+  async createUser(username, passwordHash) {
+    if (this.users.has(username)) {
+      const error = new Error('duplicate key');
+      error.code = 11000;
+      throw error;
+    }
+    this.users.set(username, { username, passwordHash, createdAt: new Date() });
+  }
+
+  async isRegistrationUsed() {
+    return this.registrationUsed;
+  }
+
+  async reserveRegistration() {
+    if (this.registrationUsed) return false;
+    this.registrationUsed = true;
+    return true;
+  }
+
+  async releaseRegistration() {
+    this.registrationUsed = false;
+  }
+
+  async createSession(hash, username, expiresAt) {
+    this.sessions.set(hash, { username, expiresAt });
+  }
+
+  async getSession(hash) {
+    return this.sessions.get(hash) || null;
+  }
+
+  async deleteSession(hash) {
+    this.sessions.delete(hash);
+  }
+
+  async createProxy(record) {
+    if (this.proxies.has(record._id)) {
+      const error = new Error('duplicate key');
+      error.code = 11000;
+      throw error;
+    }
+    this.proxies.set(record._id, record);
+    return record;
+  }
+
+  async getProxy(id) {
+    return this.proxies.get(id) || null;
+  }
+
+  async deleteProxy(id, owner) {
+    const record = this.proxies.get(id);
+    if (!record || record.owner !== owner) return false;
+    this.proxies.delete(id);
+    return true;
+  }
+
+  async listProxies(owner) {
+    return [...this.proxies.values()].filter((record) => record.owner === owner);
+  }
+}
 
 function upstream({ status = 200, body = 'mock', headers = {} } = {}) {
   return async (url, options) => {
@@ -20,7 +95,7 @@ function upstream({ status = 200, body = 'mock', headers = {} } = {}) {
   };
 }
 
-function request(path, { method = 'GET', headers = {} } = {}) {
+function request(path, { method = 'GET', headers = {}, body } = {}) {
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: '127.0.0.1',
@@ -38,13 +113,17 @@ function request(path, { method = 'GET', headers = {} } = {}) {
       }));
     });
     req.on('error', reject);
+    if (body !== undefined) req.write(body);
     req.end();
   });
 }
 
 before(async () => {
   server = http.createServer((req, res) => {
-    handle(req, res, { fetchImpl: (...args) => fetchImpl(...args) });
+    handle(req, res, {
+      fetchImpl: (...args) => fetchImpl(...args),
+      store: currentStore,
+    });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   port = server.address().port;
@@ -55,6 +134,7 @@ after(() => new Promise((resolve) => server.close(resolve)));
 beforeEach(() => {
   calls = [];
   fetchImpl = upstream();
+  currentStore = null;
   resetHotFiles();
 });
 
@@ -332,8 +412,7 @@ test('GITHACK_CANONICAL_HOST can move the homepage and raw host', async () => {
   }
 });
 
-test('Vercel deployment hosts use the Vercel URL with path prefixes', async () => {
-  const host = 'demo-githack.vercel.app';
+test('Vercel deployment hosts use the Vercel URL with path prefixes', async () => {  const host = 'demo-githack.vercel.app';
 
   const index = await request('/', { headers: { Host: host } });
   assert.equal(index.status, 200);
@@ -397,4 +476,155 @@ test('Vercel deployment hosts use the Vercel URL with path prefixes', async () =
     post.headers['set-cookie'][0],
     '__Http-phish=1; Path=/cdn/user/repo/; Max-Age=86400; SameSite=Lax; HttpOnly; Secure',
   );
+});
+
+test('dashboard auth protects pages while short links stay public', async () => {
+  const store = new FakeStore();
+  store.users.set('alice', {
+    username: 'alice',
+    passwordHash: await hashPassword('correct horse'),
+  });
+  currentStore = store;
+
+  try {
+    const anonymous = await request('/');
+    assert.equal(anonymous.status, 302);
+    assert.match(anonymous.headers.location, /^\/login\?next=/);
+
+    const publicFile = await request('/user/repo/branch/file.js');
+    assert.equal(publicFile.status, 200);
+
+    const loginPage = await request('/login');
+    assert.equal(loginPage.status, 200);
+    assert.match(loginPage.body, /Sign in/);
+
+    const badLogin = await request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'username=alice&password=wrong',
+    });
+    assert.equal(badLogin.status, 401);
+
+    const login = await request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'username=alice&password=correct+horse',
+    });
+    assert.equal(login.status, 303);
+    const cookie = login.headers['set-cookie'][0].split(';')[0];
+
+    const dashboard = await request('/', { headers: { Cookie: cookie } });
+    assert.equal(dashboard.status, 200);
+    assert.match(dashboard.body, /<strong>Dashboard<\/strong>/);
+    assert.match(dashboard.body, /Signed in as alice/);
+
+    const created = await request('/api/proxies', {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://raw.githack.com/user/repo/branch/file.js' }),
+    });
+    assert.equal(created.status, 201);
+    const first = JSON.parse(created.body);
+    assert.equal(first.id.length, 8);
+    assert.equal(first.shortUrl, `http://raw.githack.com/s/${first.id}`);
+
+    const short = await request(`/s/${first.id}`);
+    assert.equal(short.status, 200);
+    assert.equal(
+      calls.at(-1).url,
+      'https://raw.githubusercontent.com/user/repo/branch/file.js',
+    );
+    assert.equal(
+      short.headers['cache-control'],
+      'max-age=60, public, stale-while-revalidate=60, stale-if-error=604800',
+    );
+    assert.equal(short.headers['vercel-cache-tag'], `p${first.id}`);
+
+    const createdCdn = await request('/api/proxies', {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: 'https://github.com/user/repo/blob/branch/file.js',
+        cdn: true,
+      }),
+    });
+    assert.equal(createdCdn.status, 201);
+    const second = JSON.parse(createdCdn.body);
+
+    const shortCdn = await request(`/s/${second.id}`);
+    assert.equal(shortCdn.status, 200);
+    assert.equal(
+      calls.at(-1).url,
+      'https://raw.githubusercontent.com/user/repo/branch/file.js',
+    );
+    assert.equal(
+      shortCdn.headers['cache-control'],
+      'max-age=31536000, public, immutable',
+    );
+
+    const list = await request('/api/proxies', { headers: { Cookie: cookie } });
+    assert.equal(list.status, 200);
+    assert.equal(JSON.parse(list.body).proxies.length, 2);
+
+    const unauthorizedPurge = await request('/purge?url=https://raw.githack.com/user/repo/branch/file.js', {
+      method: 'DELETE',
+    });
+    assert.equal(unauthorizedPurge.status, 401);
+
+    const deleted = await request(`/api/proxies/${first.id}`, {
+      method: 'DELETE',
+      headers: { Cookie: cookie },
+    });
+    assert.equal(deleted.status, 200);
+    assert.equal(JSON.parse(deleted.body).deleted, true);
+
+    const missing = await request(`/s/${first.id}`);
+    assert.equal(missing.status, 404);
+  } finally {
+    currentStore = null;
+  }
+});
+
+test('secret registration URL works exactly once', async () => {
+  const previous = process.env.REGISTRATION_SECRET;
+  process.env.REGISTRATION_SECRET = 'one-time-secret';
+  const store = new FakeStore();
+  currentStore = store;
+
+  try {
+    const wrong = await request('/register/not-the-secret');
+    assert.equal(wrong.status, 404);
+
+    const page = await request('/register/one-time-secret');
+    assert.equal(page.status, 200);
+    assert.match(page.body, /Create account/);
+    assert.equal(page.headers['referrer-policy'], 'no-referrer');
+
+    const created = await request('/register/one-time-secret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'username=alice&password=longpassword&confirm=longpassword',
+    });
+    assert.equal(created.status, 303);
+    assert.equal(created.headers.location, '/');
+
+    const cookie = created.headers['set-cookie'][0].split(';')[0];
+    const dashboard = await request('/', { headers: { Cookie: cookie } });
+    assert.equal(dashboard.status, 200);
+    assert.match(dashboard.body, /Signed in as alice/);
+
+    const reuse = await request('/register/one-time-secret');
+    assert.equal(reuse.status, 404);
+
+    const login = await request('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'username=alice&password=longpassword',
+    });
+    assert.equal(login.status, 303);
+  } finally {
+    if (previous === undefined) delete process.env.REGISTRATION_SECRET;
+    else process.env.REGISTRATION_SECRET = previous;
+    currentStore = null;
+  }
 });

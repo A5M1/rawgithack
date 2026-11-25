@@ -6,14 +6,16 @@
   "main": "server.js",
   "description": "rawgit.hack Vercel adapter",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
+    "dev": "node --env-file-if-exists=.env.local server.js",
+    "start": "node --env-file-if-exists=.env.local server.js",
     "deploy": "vercel deploy",
     "test": "node --test",
+    "create-user": "node scripts/create-user.js",
     "vercel-build": "node -e \"\""
   },
   "dependencies": {
     "@vercel/functions": "^3.11.3",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "mongodb": "^7.9.1"
   }
 }

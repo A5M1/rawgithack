@@ -1,0 +1,279 @@
+<!--# set var="title" value="Dashboard" -->
+<!--# set var="description" value="rawgit.hack - dashboard" -->
+
+<!--# include file="internal/pre.html" -->
+
+<style>
+.dash {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.dash h2 {
+  font-size: 1.3em;
+  margin: 2em 0 .6em;
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+.dash .create {
+  display: flex;
+  gap: 0;
+}
+.dash .create select {
+  border: none;
+  border-left: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0 .5em;
+}
+.dash .create .url-action-button {
+  border-left: 1px solid var(--color-border-ui);
+}
+.dash-error {
+  color: var(--color-error);
+  min-height: 1.5em;
+  margin: .5em 0;
+}
+.dash-result {
+  display: flex;
+  margin: .5em 0 1em;
+}
+.proxy {
+  border-bottom: 1px solid var(--color-border);
+  padding: .9em 0;
+}
+.proxy-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3em 1em;
+  align-items: baseline;
+}
+.proxy-main a {
+  font-weight: bold;
+  word-break: break-all;
+}
+.proxy-main code {
+  font-size: .85em;
+  word-break: break-all;
+}
+.proxy-meta {
+  color: var(--color-text-muted);
+  font-size: .8em;
+  margin-top: .3em;
+}
+.proxy-actions {
+  display: flex;
+  gap: .4em;
+  margin-top: .5em;
+}
+.proxy-actions button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-ui);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: .3em .7em;
+}
+.proxy-actions button:hover {
+  background: var(--color-border);
+}
+.muted { color: var(--color-text-muted); }
+</style>
+
+<p class="hero">
+  <strong>Dashboard</strong>
+  <span class="desc">Signed in as <!--# echo var="rg_user" -->. Short links can be opened without signing in.</span>
+</p>
+
+<div class="dash">
+  <form id="create-form">
+    <div class="create url-container">
+      <input id="target" class="url" type="url" required
+             placeholder="Paste a GitHub, GitLab, Bitbucket, Gitea, Codeberg or githack URL">
+      <select id="mode" title="Cache mode">
+        <option value="cdn">production</option>
+        <option value="dev">development</option>
+      </select>
+      <button type="submit" class="url-action-button">create</button>
+    </div>
+  </form>
+
+  <p id="create-error" class="dash-error"></p>
+
+  <div id="create-result" class="dash-result" hidden>
+    <input id="short-url" class="url" readonly>
+    <button id="copy-short" class="url-action-button">copy</button>
+  </div>
+
+  <h2>Your short links</h2>
+  <div id="proxy-list">
+    <p class="muted">Loading…</p>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('create-form');
+const targetEl = document.getElementById('target');
+const modeEl = document.getElementById('mode');
+const errorEl = document.getElementById('create-error');
+const resultEl = document.getElementById('create-result');
+const shortEl = document.getElementById('short-url');
+const copyShortButton = document.getElementById('copy-short');
+const listEl = document.getElementById('proxy-list');
+
+const copy = async (value, button) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    const old = button.textContent;
+    button.textContent = 'copied!';
+    setTimeout(() => { button.textContent = old; }, 1000);
+  } catch {
+    // Clipboard access can be denied; the value is still selectable.
+  }
+};
+
+const formatDate = value => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+};
+
+const makeButton = (label, onClick) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
+};
+
+const renderProxies = proxies => {
+  listEl.replaceChildren();
+
+  if (!proxies.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No short links yet.';
+    listEl.append(empty);
+    return;
+  }
+
+  for (const proxy of proxies) {
+    const row = document.createElement('div');
+    row.className = 'proxy';
+
+    const main = document.createElement('div');
+    main.className = 'proxy-main';
+
+    const link = document.createElement('a');
+    link.href = proxy.shortUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = proxy.shortUrl;
+
+    const code = document.createElement('code');
+    code.textContent = proxy.url;
+
+    main.append(link, code);
+
+    const meta = document.createElement('div');
+    meta.className = 'proxy-meta';
+    meta.textContent = [
+      proxy.isCdn ? 'production' : 'development',
+      formatDate(proxy.createdAt),
+    ].filter(Boolean).join(' · ');
+
+    const actions = document.createElement('div');
+    actions.className = 'proxy-actions';
+    actions.append(
+      makeButton('copy', () => copy(proxy.shortUrl, actions.firstChild)),
+      makeButton('purge', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const response = await fetch('/purge?' + new URLSearchParams({ url: proxy.shortUrl }), {
+            method: 'DELETE',
+          });
+          button.textContent = response.ok ? 'purged' : 'failed';
+        } catch {
+          button.textContent = 'failed';
+        }
+        setTimeout(() => {
+          button.textContent = 'purge';
+          button.disabled = false;
+        }, 1500);
+      }),
+      makeButton('delete', async (event) => {
+        if (!confirm('Delete ' + proxy.shortUrl + '?')) return;
+        const button = event.currentTarget;
+        button.disabled = true;
+        await fetch('/api/proxies/' + encodeURIComponent(proxy.id), { method: 'DELETE' });
+        loadProxies();
+      }),
+    );
+
+    row.append(main, meta, actions);
+    listEl.append(row);
+  }
+};
+
+const loadProxies = async () => {
+  try {
+    const response = await fetch('/api/proxies', { headers: { Accept: 'application/json' } });
+    if (response.status === 401) {
+      location.href = '/login';
+      return;
+    }
+    if (!response.ok) throw new Error('failed to load');
+    const data = await response.json();
+    renderProxies(data.proxies || []);
+  } catch {
+    listEl.replaceChildren();
+    const error = document.createElement('p');
+    error.className = 'muted';
+    error.textContent = 'Could not load short links.';
+    listEl.append(error);
+  }
+};
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  errorEl.textContent = '';
+  resultEl.hidden = true;
+
+  const url = targetEl.value.trim();
+  if (!url) return;
+
+  const submit = form.querySelector('button[type="submit"]');
+  submit.disabled = true;
+
+  try {
+    const response = await fetch('/api/proxies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ url, cdn: modeEl.value === 'cdn' }),
+    });
+
+    if (response.status === 401) {
+      location.href = '/login';
+      return;
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'could not create short link');
+
+    shortEl.value = data.shortUrl;
+    resultEl.hidden = false;
+    targetEl.value = '';
+    loadProxies();
+  } catch (error) {
+    errorEl.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+copyShortButton.addEventListener('click', () => copy(shortEl.value, copyShortButton));
+shortEl.addEventListener('focus', () => shortEl.select());
+
+loadProxies();
+</script>
+
+<!--# include file="internal/post.html" -->

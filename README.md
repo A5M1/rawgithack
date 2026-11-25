@@ -27,9 +27,11 @@ The canonical deployment is the nginx configuration in `rawgithack.conf`
 adapter for running the same service without a server:
 
 - `server.js` — Express entrypoint used by Vercel's Express preset
-- `lib/app.js` — request routing, proxying and phishing notice logic
+- `lib/app.js` — request routing, proxying, auth and short-link logic
 - `lib/config.js` — host, MIME type and cache-control tables ported from
   `rawgithack.conf`
+- `lib/auth.js` — scrypt password hashing, sessions and short IDs
+- `lib/db.js` — MongoDB store for users, sessions and short links
 - `lib/ssi.js` — small SSI renderer used for the HTML templates in `web/`
 - `vercel.json` — routes every request to the function and bundles `web/`
 
@@ -44,6 +46,24 @@ npx vercel deploy --prod
 
 Or import the repository in the Vercel dashboard. The project uses Vercel's
 Express preset (`server.js`), so there is no build step.
+
+### Environment variables
+
+Copy `.env.example` to `.env.local` for local development, or add the same
+keys in the Vercel project settings. `.env.local` is gitignored.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MONGODB_URI` | For auth/short links | MongoDB connection string |
+| `MONGODB_DB` | No | Database name, default `githack` |
+| `REGISTRATION_SECRET` | No | Enables `/register/<secret>` once |
+| `GITHACK_BASE_DOMAIN` | No | Your domain for subdomain mode |
+| `GITHACK_CANONICAL_HOST` | No | Canonical/homepage host override |
+| `GITHACK_WEB_ROOT` | No | Template directory, default `web` |
+| `PORT` | Local only | Local server port, default `3000` |
+
+`npm run dev` and `npm start` load `.env.local` automatically when it exists.
+On Vercel, use the project's Environment Variables settings instead.
 
 ### Using the Vercel URL directly
 
@@ -98,6 +118,70 @@ Optional environment variables:
 
 Preview `*.vercel.app` deployments are served as the development raw host so
 they can be tested before domains are attached.
+
+### Dashboard, auth and short links
+
+When `MONGODB_URI` is configured, the homepage becomes a login-protected
+dashboard. Proxied file URLs and short links stay public, so they can be
+embedded without authentication.
+
+Set these Vercel environment variables:
+
+```sh
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster.example.mongodb.net/
+MONGODB_DB=githack
+```
+
+Never commit the connection string. If it has been exposed, rotate the
+database password in MongoDB Atlas. Vercel Functions use dynamic IPs, so the
+Atlas network access list normally needs `0.0.0.0/0` (or a restricted proxy).
+
+Create dashboard users from your machine (there is no public signup):
+
+```sh
+MONGODB_URI='mongodb+srv://...' npm run create-user -- alice 'a-long-password'
+```
+
+Users are stored in `<MONGODB_DB>.users` with scrypt password hashes. Sessions
+are server-side documents in `.sessions` with a TTL index and are sent as an
+HttpOnly `__githack_session` cookie.
+
+#### One-time secret registration URL
+
+Set a long random secret and open the matching URL once:
+
+```sh
+REGISTRATION_SECRET=<random-secret>
+```
+
+```
+https://your-host/register/<random-secret>
+```
+
+That URL shows a registration form and creates one account. After the account
+is created the link is permanently consumed. Registration responses send
+`Referrer-Policy: no-referrer` and `Cache-Control: no-store` so the secret is
+not leaked through referrers or caches.
+
+To allow another registration, delete the `settings` document with
+`_id: "registration"` in MongoDB. If `REGISTRATION_SECRET` is not set,
+registration is disabled. Additional users can always be created with
+`npm run create-user`.
+
+Logged-in users can create short links from the dashboard. A short link is
+stored in `.proxies` with its owner:
+
+```
+https://your-host/s/Ab3dE9xQ
+```
+
+Short links are public, proxy the file directly, and use the short id as their
+cache tag (`pAb3dE9xQ`). They can be created from GitHub/GitLab/Bitbucket/
+Gitea/Codeberg URLs or from generated githack URLs, and can be deleted from the
+dashboard.
+
+If `MONGODB_URI` is not set, authentication and short links are disabled and
+the public homepage is served without login.
 
 ### Vercel-specific behaviour
 
