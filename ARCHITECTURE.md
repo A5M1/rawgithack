@@ -408,6 +408,8 @@ Legacy records without `contentType` fall back to the upstream response type.
 | `MONGODB_URI` | MongoDB connection string; enables auth and short links |
 | `MONGODB_DB` | Database name, default `githack` |
 | `REGISTRATION_SECRET` | Enables the legacy one-time registration URL |
+| `SHORT_LINK_QUOTA` | Per-user short-link quota, default `200` |
+| `TRUST_PROXY` | Trust `x-forwarded-*` headers from a reverse proxy |
 | `GITHACK_BASE_DOMAIN` | Enables subdomain mode for a custom domain |
 | `GITHACK_CANONICAL_HOST` | Canonical/homepage host override |
 | `GITHACK_SITE_NAME` | Brand name used in titles and pages |
@@ -451,10 +453,20 @@ flowchart TD
 - Registration is invite-only; invite tokens are stored only as hashes.
 - Registration pages set `Referrer-Policy: no-referrer` and `Cache-Control:
   no-store`.
-- Sessions are server-side and HttpOnly. CSRF exposure is limited by
-  SameSite=Lax and JSON-only admin/proxy APIs.
+- Sessions are server-side and HttpOnly. HTTPS uses the `__Host-` cookie prefix.
+- CSRF exposure is limited by SameSite=Lax cookies and JSON-only admin/proxy APIs.
 - The proxy only accepts source URLs from known hosting providers; it is not a
   general-purpose open proxy.
+- Proxied HTML/SVG responses are sandboxed with CSP to prevent them from
+  reaching the dashboard origin's authenticated APIs.
+- Application pages deny framing and send `X-Content-Type-Options: nosniff`.
+- Login, registration, purge, short-link and invite creation have in-memory
+  rate limits. Add Vercel WAF or a shared limiter for strict cross-instance
+  limits.
+- Short-link creation has a per-user quota (`SHORT_LINK_QUOTA`, default 200).
+- Security-relevant actions are emitted as structured JSON logs.
+- Authorization uses the MongoDB `role` field; the username itself is not a
+  privilege.
 - Short-link cache entries are immutable; purge the tag and hard-refresh the
   browser after changing a previously cached response.
 - Hot-file detection is per-instance and therefore approximate.

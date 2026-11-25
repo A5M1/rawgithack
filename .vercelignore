@@ -4,4 +4,5 @@ scripts/
 LICENSE
 README.md
 ARCHITECTURE.md
+SECURITY-AUDIT.md
 .env*

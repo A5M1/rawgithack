@@ -139,6 +139,10 @@ class FakeStore {
   async listProxies(owner) {
     return [...this.proxies.values()].filter((record) => record.owner === owner);
   }
+
+  async countProxies(owner) {
+    return [...this.proxies.values()].filter((record) => record.owner === owner).length;
+  }
 }
 
 function upstream({ status = 200, body = 'mock', headers = {} } = {}) {

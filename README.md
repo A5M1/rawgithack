@@ -21,6 +21,10 @@ The core proxy behavior is preserved, but this fork adds:
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the request lifecycle, data model,
 route map, and a detailed comparison with the upstream nginx implementation.
 
+## Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — system design and upstream comparison
+
 Supported Platforms
 -------------------
 
@@ -72,6 +76,8 @@ keys in the Vercel project settings. `.env.local` is gitignored.
 | `MONGODB_URI` | For auth/short links | MongoDB connection string |
 | `MONGODB_DB` | No | Database name, default `githack` |
 | `REGISTRATION_SECRET` | No | Enables `/register/<secret>` once |
+| `SHORT_LINK_QUOTA` | No | Max short links per user, default `200` |
+| `TRUST_PROXY` | No | Set to `1` behind a trusted reverse proxy |
 | `GITHACK_BASE_DOMAIN` | No | Your domain for subdomain mode |
 | `GITHACK_CANONICAL_HOST` | No | Canonical/homepage host override |
 | `GITHACK_SITE_NAME` | No | Brand name shown in titles/FAQ, defaults to the base domain |
@@ -163,8 +169,9 @@ Create an admin from your machine (there is no public signup):
 MONGODB_URI='mongodb+srv://...' npm run create-user -- admin 'a-long-password' --admin
 ```
 
-The username `admin` always has admin access. Other users can also be promoted
-with the `role: "admin"` field in MongoDB or from the admin page.
+Admin access comes from `role: "admin"` in MongoDB. The username alone is not
+privileged. Other users can be promoted with the `role: "admin"` field or from
+the admin user page.
 
 Users are stored in `<MONGODB_DB>.users` with scrypt password hashes. Sessions
 are server-side documents in `.sessions` with a TTL index and are sent as an
@@ -225,6 +232,20 @@ letters, numbers, dash or underscore), producing links such as
 
 If `MONGODB_URI` is not set, authentication and short links are disabled and
 the public homepage is served without login.
+
+### Security
+
+Key controls:
+
+- HTML/SVG/XML proxy responses are sandboxed with CSP.
+- Application pages deny framing and send `X-Content-Type-Options: nosniff`.
+- Admin access uses the MongoDB `role` field only.
+- Login, registration, purge, short-link and invite creation are rate-limited.
+- Short-link creation has a per-user quota (`SHORT_LINK_QUOTA`).
+- Login attempts use a dummy-hash check for username-timing resistance.
+- HTTPS sessions use the `__Host-` cookie prefix.
+- Cache purges require ownership or admin access.
+- Security-relevant actions are logged as structured JSON events.
 
 ### Vercel-specific behavior
 
