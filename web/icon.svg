@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="16" y="16" width="480" height="480" rx="56" fill="#000000" />
+  <rect x="74" y="66" width="38" height="24" rx="12" fill="#808080" />
+  <rect x="136" y="66" width="38" height="24" rx="12" fill="#808080" />
+  <rect x="298" y="66" width="150" height="24" rx="12" fill="#666666" />
+  <rect x="16" y="138" width="480" height="24" fill="#222222" />
+  <g fill="#ffffff" font-family="Consolas, &#39;Courier New&#39;, monospace" font-weight="bold" font-size="144" text-anchor="middle">
+    <text x="256" y="378" letter-spacing="-4">&lt;G/H&gt;</text>
+  </g>
+</svg>
