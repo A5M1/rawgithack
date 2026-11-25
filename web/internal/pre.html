@@ -85,7 +85,7 @@ a { color: var(--color-link); }
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   padding: 0 1em;
 }
 
@@ -101,6 +101,9 @@ a { color: var(--color-link); }
   margin: 0;
   padding: 0;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: .25em;
 }
 
 .hd .nav li {
@@ -117,6 +120,18 @@ a { color: var(--color-link); }
 }
 
 .hd .nav a:hover {
+  background: var(--color-border);
+}
+
+.hd .nav a.signin {
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: .45em .9em;
+  line-height: 1.2;
+}
+
+.hd .nav a.signin:hover {
   background: var(--color-border);
 }
 
@@ -261,7 +276,7 @@ a { color: var(--color-link); }
   <nav class="nav">
     <ul>
       <!--# if expr="$rg_show_signin = /1/" -->
-      <li><a href="/login">Sign in</a></li>
+      <li><a class="signin" href="/login">Sign in</a></li>
       <!--# endif -->
       <!--# if expr="$rg_role = /admin/" -->
       <li><a href="/dashboard/users">Admin</a></li>
