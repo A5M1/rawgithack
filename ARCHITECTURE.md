@@ -346,7 +346,7 @@ to allow another legacy registration.
 {
   "url": "https://github.com/user/repo/blob/main/file.js",
   "cdn": true,
-  "slug": "my-file.js"
+  "slug": "my-file"
 }
 ```
 
@@ -468,6 +468,8 @@ flowchart TD
 - Security-relevant actions are emitted as structured JSON logs.
 - Authorization uses the MongoDB `role` field; the username itself is not a
   privilege.
+- New usernames are limited to 3-32 letters, numbers or underscore; common
+  system names are reserved. Existing legacy usernames can still sign in.
 - Short-link cache entries are immutable; purge the tag and hard-refresh the
   browser after changing a previously cached response.
 - Hot-file detection is per-instance and therefore approximate.

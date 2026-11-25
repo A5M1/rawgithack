@@ -7,7 +7,7 @@
 
 import { MongoClient } from 'mongodb';
 
-import { hashPassword, isUsername, isReservedUsername } from '../lib/auth.js';
+import { hashPassword, isReservedUsername } from '../lib/auth.js';
 import { DEFAULT_DB_NAME } from '../lib/db.js';
 
 const args = process.argv.slice(2);
@@ -19,13 +19,13 @@ if (!username || !password) {
   process.exit(1);
 }
 
-if (!isUsername(username)) {
-  console.error('Username must match [A-Za-z0-9_.-]{1,64}');
+if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) {
+  console.error('Username must be 3-32 characters using only letters, numbers and underscore');
   process.exit(1);
 }
 
-if (isReservedUsername(username) && !admin) {
-  console.error(`Username "${username}" is reserved; add --admin to create/promote it.`);
+if (isReservedUsername(username) && !(admin && username === 'admin')) {
+  console.error(`Username "${username}" is reserved. Only "admin" can be created with --admin.`);
   process.exit(1);
 }
 

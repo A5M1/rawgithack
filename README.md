@@ -191,6 +191,11 @@ Admin access comes from `role: "admin"` in MongoDB. The username alone is not
 privileged. Other users can be promoted with the `role: "admin"` field or from
 the admin user page.
 
+New usernames must be 3-32 characters using only letters, numbers and
+underscore. Common system names (`root`, `administrator`, `system`, `api`,
+`dashboard`, `admin`, etc.) are reserved. Only `admin` can be created with
+`--admin`; existing legacy usernames can still sign in.
+
 Users are stored in `<MONGODB_DB>.users` with scrypt password hashes. Sessions
 are server-side documents in `.sessions` with a TTL index and are sent as an
 HttpOnly `__githack_session` cookie.
@@ -246,7 +251,7 @@ user's space.
 
 The dashboard also accepts an optional custom name (`2-64` characters:
 letters, numbers, dash or underscore), producing links such as
-`https://your-host/s/my-file.js`. Custom names are unique. If no custom name is
+`https://your-host/s/my-file`. Custom names are unique. If no custom name is
 supplied, the legacy public URL on this instance is returned instead and no
 `/s/` record is created.
 
