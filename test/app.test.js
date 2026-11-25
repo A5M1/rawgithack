@@ -515,6 +515,7 @@ test('dashboard auth protects pages while short links stay public', async () => 
 
     const dashboard = await request('/', { headers: { Cookie: cookie } });
     assert.equal(dashboard.status, 200);
+    assert.equal(dashboard.headers['cache-control'], 'no-store');
     assert.match(dashboard.body, /<strong>Dashboard<\/strong>/);
     assert.match(dashboard.body, /Signed in as alice/);
 
