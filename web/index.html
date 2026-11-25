@@ -242,7 +242,7 @@ pre { overflow-x: auto; }
         To serve a new version, use a tag or commit ref in the URL instead of a branch name — e.g. <code>/user/repo/TAG/file</code> instead of <code>/user/repo/BRANCH/file</code>. If you need to invalidate a URL immediately, use the purge cache button above, or send a <code>DELETE</code> request from the command line:
       </p>
       <p>
-        <code>curl -X DELETE 'https://raw.githack.com/purge?url=https://...'</code>
+        <code>curl -X DELETE 'https://<!--# echo var="rg_canonical_host" default="raw.githack.com" -->/purge?url=https://...'</code>
       </p>
     </div>
   </details>
@@ -285,29 +285,50 @@ pre { overflow-x: auto; }
 </div>
 
 <script>
+const BASE_DOMAIN = '<!--# echo var="rg_base_domain" default="githack.com" -->';
+const CANONICAL_HOST = '<!--# echo var="rg_canonical_host" default="raw.githack.com" -->';
+
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const hostName = (prefix, cdn = false) => {
+  if (!cdn && prefix === 'raw') return CANONICAL_HOST;
+  return `${prefix}${cdn ? 'cdn' : ''}.${BASE_DOMAIN}`;
+};
+
+const isGithackUrl = url => {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === BASE_DOMAIN
+      || host === CANONICAL_HOST
+      || host.endsWith(`.${BASE_DOMAIN}`);
+  } catch {
+    return false;
+  }
+};
+
 const TEMPLATES = [
   [/^(https?):\/\/gitlab\.com\/([^\/]+.*\/[^\/]+)\/(?:raw|blob)\/(.+?)(?:\?.*)?$/i,
-   '$1://gl.githack.com/$2/raw/$3', '$1://gitlab.com/$2/raw/$3'],
+   `$1://${hostName('gl')}/$2/raw/$3`, '$1://gitlab.com/$2/raw/$3'],
   [/^(https?):\/\/bitbucket\.org\/([^\/]+\/[^\/]+)\/(?:raw|src)\/(.+?)(?:\?.*)?$/i,
-   '$1://bb.githack.com/$2/raw/$3', '$1://bitbucket.org/$2/raw/$3'],
+   `$1://${hostName('bb')}/$2/raw/$3`, '$1://bitbucket.org/$2/raw/$3'],
   [/^(https?):\/\/gitea\.com\/([^\/]+\/[^\/]+)\/(?:raw|src)\/(.+?)(?:\?.*)?$/i,
-   '$1://gt.githack.com/$2/raw/$3', '$1://gitea.com/$2/raw/$3'],
+   `$1://${hostName('gt')}/$2/raw/$3`, '$1://gitea.com/$2/raw/$3'],
   [/^(https?):\/\/codeberg\.org\/([^\/]+\/[^\/]+)\/(?:raw|src)\/(.+?)(?:\?.*)?$/i,
-   '$1://cb.githack.com/$2/raw/$3', '$1://codeberg.org/$2/raw/$3'],
+   `$1://${hostName('cb')}/$2/raw/$3`, '$1://codeberg.org/$2/raw/$3'],
   [/^(https?):\/\/bitbucket\.org\/snippets\/([^\/]+\/[^\/]+)\/revisions\/([^\/\#\?]+)(?:\?[^#]*)?(?:\#file-(.+?))$/i,
-   '$1://bb.githack.com/!api/2.0/snippets/$2/$3/files/$4', '$1://api.bitbucket.org/2.0/snippets/$2/$3/files/$4'],
+   `$1://${hostName('bb')}/!api/2.0/snippets/$2/$3/files/$4`, '$1://api.bitbucket.org/2.0/snippets/$2/$3/files/$4'],
   [/^(https?):\/\/bitbucket\.org\/snippets\/([^\/]+\/[^\/#\?]+)(?:\?[^#]*)?(?:\#file-(.+?))$/i,
-   '$1://bb.githack.com/!api/2.0/snippets/$2/HEAD/files/$3', '$1://api.bitbucket.org/2.0/snippets/$2/HEAD/files/$3'],
+   `$1://${hostName('bb')}/!api/2.0/snippets/$2/HEAD/files/$3`, '$1://api.bitbucket.org/2.0/snippets/$2/HEAD/files/$3'],
   [/^(https?):\/\/bitbucket\.org\/\!api\/2.0\/snippets\/([^\/]+\/[^\/]+\/[^\/]+)\/files\/(.+?)(?:\?.*)?$/i,
-   '$1://bb.githack.com/!api/2.0/snippets/$2/files/$3', '$1://api.bitbucket.org/2.0/snippets/$2/files/$3'],
+   `$1://${hostName('bb')}/!api/2.0/snippets/$2/files/$3`, '$1://api.bitbucket.org/2.0/snippets/$2/files/$3'],
   [/^(https?):\/\/api\.bitbucket\.org\/2.0\/snippets\/([^\/]+\/[^\/]+\/[^\/]+)\/files\/(.+?)(?:\?.*)?$/i,
-   '$1://bb.githack.com/!api/2.0/snippets/$2/files/$3', '$1://api.bitbucket.org/2.0/snippets/$2/files/$3'],
+   `$1://${hostName('bb')}/!api/2.0/snippets/$2/files/$3`, '$1://api.bitbucket.org/2.0/snippets/$2/files/$3'],
   [/^(https?):\/\/raw\.github(?:usercontent)?\.com\/([^\/]+\/[^\/]+\/[^\/]+|[0-9A-Za-z-]+\/[0-9a-f]+\/raw)\/(.+)/i,
-   '$1://raw.githack.com/$2/$3', '$1://raw.githubusercontent.com/$2/$3'],
+   `$1://${hostName('raw')}/$2/$3`, '$1://raw.githubusercontent.com/$2/$3'],
   [/^(https?):\/\/github\.com\/(.[^\/]+?)\/(.[^\/]+?)\/(?!releases\/)(?:(?:blob|raw)\/)?(.+?\/.+)/i,
-   '$1://raw.githack.com/$2/$3/$4', '$1://raw.githubusercontent.com/$2/$3/$4'],
+   `$1://${hostName('raw')}/$2/$3/$4`, '$1://raw.githubusercontent.com/$2/$3/$4'],
   [/^(https?):\/\/gist\.github(?:usercontent)?\.com\/(.+?\/[0-9a-f]+\/raw\/(?:[0-9a-f]+\/)?.+)$/i,
-   '$1://gist.githack.com/$2', '$1://gist.githubusercontent.com/$2']
+   `$1://${hostName('gist')}/$2`, '$1://gist.githubusercontent.com/$2']
 ];
 
 const convertUrl = url => {
@@ -316,7 +337,14 @@ const convertUrl = url => {
   }
 };
 
-const cdnize = url => url.replace(/^(\w+):\/\/(\w+)/, '$1://$2cdn');
+const cdnize = url => url.replace(/^(\w+:\/\/)([^\/]+)(.*)$/, (_, scheme, host, rest) => {
+  if (host === CANONICAL_HOST || host === BASE_DOMAIN) {
+    return `${scheme}${hostName('raw', true)}${rest}`;
+  }
+  const parts = host.split('.');
+  if (!parts[0].endsWith('cdn')) parts[0] += 'cdn';
+  return `${scheme}${parts.join('.')}${rest}`;
+});
 
 const GITHUB_API_URL = 'https://api.github.com';
 const GIST_URL_PATTERN = /^(https?):\/\/gist\.github\.com\/([^\/]+)\/([0-9a-f]+)\/?(?:\?.*)?$/i;
@@ -345,6 +373,9 @@ const prodPurgeButton = document.getElementById('url-prod-purge');
 const prodPurgeStatus = document.getElementById('url-prod-purge-status');
 const sriGenButton    = document.getElementById('url-sri-gen');
 let rawFileUrl;
+
+devEl.placeholder  = `https://${hostName('raw')}/user/repo/branch/file`;
+prodEl.placeholder = `https://${hostName('raw', true)}/user/repo/tag/file`;
 
 const copyWithFeedback = (button, text, label) => {
   navigator.clipboard.writeText(text).then(() => {
@@ -392,7 +423,12 @@ urlEl.addEventListener('input', () => {
   formatTimer = setTimeout(formatURL, 150);
 }, false);
 
-const decdn = url => url.replace(/^(\w+:\/\/\w+)cdn(\.githack\.com\/)/, '$1$2');
+const decdn = url => url.replace(/^(\w+:\/\/)([^\/]+)(.*)$/, (_, scheme, host, rest) => {
+  if (host === hostName('raw', true)) return `${scheme}${CANONICAL_HOST}${rest}`;
+  const parts = host.split('.');
+  if (parts[0].endsWith('cdn')) parts[0] = parts[0].slice(0, -3);
+  return `${scheme}${parts.join('.')}${rest}`;
+});
 
 urlEl.value = new URLSearchParams(location.search).get('url') ?? '';
 formatURL();
@@ -406,7 +442,7 @@ function formatURL() {
   [devCopyButton, prodCopyButton, prodPurgeButton, sriGenButton].forEach(b => b.disabled = true);
   rawFileUrl = null;
 
-  if (/^https?:\/\/\w+\.githack\.com\//i.test(url)) {
+  if (isGithackUrl(url)) {
     devEl.value = decdn(url);
     prodEl.value = cdnize(decdn(url));
     setValid();
@@ -415,21 +451,25 @@ function formatURL() {
 
   const [ghUrl, rawUrl] = convertUrl(url) ?? [];
   if (ghUrl) {
-    const matches = ghUrl.match(/^(\w+:\/\/(raw).githack.com\/([^\/]+)\/([^\/]+))\/([^\/]+)\/(.*)/i);
+    const rawHost = escapeRegExp(hostName('raw'));
+    const matches = ghUrl.match(
+      new RegExp(`^(\\w+://${rawHost})/([^/]+)/([^/]+)/([^/]+)/(.*)$`, 'i'),
+    );
     if (!matches) {
       devEl.value = ghUrl;
       prodEl.value = cdnize(ghUrl);
       rawFileUrl = rawUrl;
       setValid();
-    } else if (matches[2] === 'raw') {
+    } else {
+      const [, origin, user, repo, ref, file] = matches;
       devEl.value = ghUrl;
-      let apiUrl = `${GITHUB_API_URL}/repos/${matches[3]}/${matches[4]}/git/refs/heads/${matches[5]}`;
+      const apiUrl = `${GITHUB_API_URL}/repos/${user}/${repo}/git/refs/heads/${ref}`;
       fetch(apiUrl)
         .then(res => { if (res.ok) return res.json(); })
         .then(data => {
-          let ref = data && data.object && data.object.sha ? data.object.sha : matches[5];
-          prodEl.value = cdnize(`${matches[1]}/${ref}/${matches[6]}`);
-          rawFileUrl = `https://raw.githubusercontent.com/${matches[3]}/${matches[4]}/${ref}/${matches[6]}`;
+          const resolvedRef = data && data.object && data.object.sha ? data.object.sha : ref;
+          prodEl.value = cdnize(`${origin}/${resolvedRef}/${file}`);
+          rawFileUrl = `https://raw.githubusercontent.com/${user}/${repo}/${resolvedRef}/${file}`;
           setValid();
         });
     }

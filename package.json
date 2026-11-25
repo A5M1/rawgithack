@@ -1,0 +1,16 @@
+{
+  "name": "rawgithack-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "rawgit.hack Vercel adapter",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy",
+    "test": "node --test",
+    "vercel-build": "node -e \"\""
+  },
+  "dependencies": {
+    "@vercel/functions": "^3.11.3"
+  }
+}

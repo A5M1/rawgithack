@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "other",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/proxy"
+    }
+  ],
+  "functions": {
+    "api/proxy.js": {
+      "includeFiles": "web/**"
+    }
+  }
+}

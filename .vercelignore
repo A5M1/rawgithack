@@ -1,0 +1,10 @@
+# The nginx Containerfile is for self-hosting only. Hiding it from the upload
+# prevents Vercel from auto-selecting the Container preset instead of the
+# Node.js function in api/.
+Containerfile
+rawgithack.conf
+t/
+test/
+.github/
+LICENSE
+README.md
