@@ -1,4 +1,3 @@
-extend
 web/internal/meta.html
 node_modules
 .vercel

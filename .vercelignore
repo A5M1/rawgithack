@@ -1,11 +1,7 @@
-# The nginx Containerfile lives in docker/ so Vercel does not mistake this
-# project for a container app instead of the Express app in server.js.
-rawgithack.conf
-docker/
-t/
 test/
 scripts/
 .github/
 LICENSE
 README.md
+ARCHITECTURE.md
 .env*

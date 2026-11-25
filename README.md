@@ -1,35 +1,50 @@
-rawgit.hack
-============
+rawgithack (custom fork)
+========================
 
-This is the source  code behind [rawgit.hack](https://raw.githack.com) -
-CDN for  your source code  that serves files with  proper `Content-Type`
-headers.
+This repository is a **custom fork** of
+[neoascetic/rawgithack](https://github.com/neoascetic/rawgithack), the source
+code behind [rawgit.hack](https://raw.githack.com).
+
+It is **not** the upstream project, and it is not affiliated with or endorsed
+by rawgit.hack, its maintainer, or any of the source-hosting services. The
+original project and its licence remain the work of their respective authors.
+
+The core proxy behaviour is preserved, but this fork adds:
+
+- A Vercel/Express deployment (the legacy nginx setup has been removed)
+- MongoDB-backed users, sessions and one-time registration invites
+- A login-protected `/dashboard` SPA
+- Public short links (`/s/<id>`, including custom names)
+- Admin user and invite management
+- Configurable site name, domain and footer source link
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the request lifecycle, data model,
+route map, and a detailed comparison with the upstream nginx implementation.
 
 Supported Platforms
 -------------------
 
-rawgit.hack supports the following source code hosting platforms:
+The proxy supports the following source code hosting platforms:
 
-- **[GitHub](https://github.com)** - served via `raw.githack.com` subdomain
-- **[GitHub Gist](https://gist.github.com)** - served via `gist.githack.com` subdomain
-- **[GitLab](https://gitlab.com)** - served via `gl.githack.com` subdomain
-- **[Bitbucket](https://bitbucket.org)** - served via `bb.githack.com` subdomain
-- **[Gitea](https://gitea.com)** - served via `gt.githack.com` subdomain
-- **[Codeberg](https://codeberg.org)** - served via `cb.githack.com` subdomain
+- **[GitHub](https://github.com)** - served via `raw` hosts or `/raw` paths
+- **[GitHub Gist](https://gist.github.com)** - served via `gist` hosts or paths
+- **[GitLab](https://gitlab.com)** - served via `gl` hosts or paths
+- **[Bitbucket](https://bitbucket.org)** - served via `bb` hosts or paths
+- **[Gitea](https://gitea.com)** - served via `gt` hosts or paths
+- **[Codeberg](https://codeberg.org)** - served via `cb` hosts or paths
 
 Both development and production (CDN) URLs are available for each platform.
 
 Deploying to Vercel
 -------------------
 
-The canonical deployment is the nginx configuration in `rawgithack.conf`
-(the `docker/Containerfile` builds it). The repository also contains a Vercel
-adapter for running the same service without a server:
+This fork runs as a Vercel/Express application. The upstream nginx deployment
+has been removed from this repository; the proxy logic lives in this codebase:
 
 - `server.js` — Express entrypoint used by Vercel's Express preset
 - `lib/app.js` — request routing, proxying, auth and short-link logic
-- `lib/config.js` — host, MIME type and cache-control tables ported from
-  `rawgithack.conf`
+- `lib/config.js` — host, MIME type and cache-control tables modeled on the
+  upstream proxy behavior
 - `lib/auth.js` — scrypt password hashing, sessions and short IDs
 - `lib/db.js` — MongoDB store for users, sessions and short links
 - `lib/ssi.js` — small SSI renderer used for the HTML templates in `web/`
@@ -211,14 +226,15 @@ letters, numbers, dash or underscore), producing links such as
 If `MONGODB_URI` is not set, authentication and short links are disabled and
 the public homepage is served without login.
 
-### Vercel-specific behaviour
+### Vercel-specific behavior
 
-- Responses carry the same browser `Cache-Control` as nginx. Vercel's edge
-  cache is controlled separately with `CDN-Cache-Control` and cache tags.
+- Responses carry the same browser `Cache-Control` as the upstream
+  implementation. Vercel's edge cache is controlled separately with
+  `CDN-Cache-Control` and cache tags.
 - `DELETE /purge?url=...` invalidates the corresponding cache tag with
   `invalidateByTag()` from `@vercel/functions`.
-- Hot-file detection (`limit_req_dry_run` in nginx) is approximated in
-  memory per function instance, so it is not shared across all instances.
+- Hot-file detection is approximated in memory per function instance, so it
+  is not shared across all instances.
 - Vercel Functions stream upstream bodies; very large files are still subject
   to the platform's request/response limits.
 

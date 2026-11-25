@@ -1,4 +1,4 @@
-name: Test raw.githack.com
+name: Test
 
 on:
   push:
@@ -22,28 +22,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Vercel adapter tests
+      - name: Run tests
         run: npm test
-
-  run-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build test stage
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Containerfile
-          target: test
-          tags: rawgithack:test
-          load: true
-          cache-from: type=gha
-          cache-to: ${{ github.ref == 'refs/heads/master' && 'type=gha,mode=min' || '' }}
-
-      - name: Run Test::Nginx suite
-        run: docker run --rm -v .:/etc/nginx/rawgithack rawgithack:test

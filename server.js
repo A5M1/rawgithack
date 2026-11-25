@@ -7,7 +7,7 @@ app.disable('x-powered-by');
 
 // Vercel's Express integration routes every request to this app. The original
 // URL, method and headers are preserved, so lib/app.js can keep doing the
-// host-based routing described in rawgithack.conf.
+// host-based routing and proxy logic.
 app.use((req, res, next) => {
   handle(req, res).catch(next);
 });
