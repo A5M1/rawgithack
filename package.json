@@ -11,6 +11,7 @@
     "deploy": "vercel deploy",
     "test": "node --test",
     "create-user": "node scripts/create-user.js",
+    "check-db": "node --env-file-if-exists=.env.local scripts/check-db.js",
     "vercel-build": "node -e \"\""
   },
   "dependencies": {

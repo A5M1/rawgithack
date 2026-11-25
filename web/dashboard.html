@@ -200,10 +200,26 @@ th {
     display: flex;
     flex-wrap: wrap;
     gap: .2em;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  .side-link { border-left: none; border-bottom: 2px solid transparent; }
+  .side-link { border-left: none; border-bottom: 2px solid transparent; white-space: nowrap; }
   .side-link.active { border-left: none; border-bottom-color: var(--color-link); }
   .side-heading { display: none; }
+  .view h1 { font-size: 1.6em; overflow-wrap: anywhere; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar input { flex: 1 1 100%; }
+  .toolbar .btn { flex: 1 1 auto; }
+  #users,
+  #invite-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #users table,
+  #invite-list table { min-width: 520px; }
+  .card { align-items: flex-start; }
+  .card-actions,
+  .row-actions { width: 100%; }
+  .card-actions .btn,
+  .row-actions .btn { flex: 1 1 auto; text-align: center; }
+  .create-row { flex-direction: column; }
 }
 </style>
 
@@ -377,7 +393,7 @@ const renderLinks = async () => {
         </div>
         <div class="create-custom">
           <span class="prefix">/s/</span>
-          <input id="slug" class="url" placeholder="custom short name (optional)"
+          <input id="slug" class="url" placeholder="custom short name (blank = legacy URL)"
                  autocomplete="off" spellcheck="false" maxlength="64" pattern="[A-Za-z0-9_-]{2,64}">
         </div>
         <div id="create-result" class="create-result" hidden>

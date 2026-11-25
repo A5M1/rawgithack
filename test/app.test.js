@@ -582,12 +582,15 @@ test('dashboard auth protects pages while short links stay public', async () => 
     const created = await request('/api/proxies', {
       method: 'POST',
       headers: { Cookie: cookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://raw.githack.com/user/repo/branch/file.js' }),
+      body: JSON.stringify({
+        url: 'https://raw.githack.com/user/repo/branch/file.js',
+        slug: 'first-link',
+      }),
     });
     assert.equal(created.status, 201);
     const first = JSON.parse(created.body);
-    assert.equal(first.id.length, 8);
-    assert.equal(first.shortUrl, `http://raw.githack.com/s/${first.id}`);
+    assert.equal(first.id, 'first-link');
+    assert.equal(first.shortUrl, 'http://raw.githack.com/s/first-link');
 
     const short = await request(`/s/${first.id}`);
     assert.equal(short.status, 200);
@@ -607,6 +610,7 @@ test('dashboard auth protects pages while short links stay public', async () => 
       body: JSON.stringify({
         url: 'https://github.com/user/repo/blob/branch/file.js',
         cdn: true,
+        slug: 'second-link',
       }),
     });
     assert.equal(createdCdn.status, 201);
@@ -621,6 +625,19 @@ test('dashboard auth protects pages while short links stay public', async () => 
     assert.equal(
       shortCdn.headers['cache-control'],
       'max-age=31536000, public, immutable',
+    );
+
+    const legacy = await request('/api/proxies', {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://raw.githack.com/user/repo/branch/file.js' }),
+    });
+    assert.equal(legacy.status, 200);
+    const legacyData = JSON.parse(legacy.body);
+    assert.equal(legacyData.legacy, true);
+    assert.equal(
+      legacyData.shortUrl,
+      'http://raw.githack.com/user/repo/branch/file.js',
     );
 
     const list = await request('/api/proxies', { headers: { Cookie: cookie } });

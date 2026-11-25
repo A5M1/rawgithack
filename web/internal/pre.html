@@ -162,7 +162,8 @@
     @media (max-width: 767px) {
       .hd {
         justify-content: center;
-        gap: 0 1em;
+        gap: .4em;
+        padding: .6em 1em;
       }
 
       .hd .logo svg {
@@ -171,16 +172,58 @@
         top: 4px;
       }
 
+      .hd .nav {
+        width: 100%;
+      }
+
+      .hd .nav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
       .hd .nav li {
-        margin: 0 0.2em;
+        margin: .15em;
+        line-height: 32px;
       }
 
       .hd .nav a {
-        padding: 3px 4px;
+        padding: 6px 8px;
       }
 
       .hd .title {
         font-size: 1.2em;
+        line-height: 36px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: center;
+      }
+
+      .url-container {
+        flex-wrap: wrap;
+      }
+
+      .url-container .url {
+        flex: 1 1 100%;
+        min-height: 44px;
+      }
+
+      .url-container select,
+      .url-container .url-action-button {
+        flex: 1 1 100%;
+        min-height: 44px;
+        border-left: none;
+        border-top: 1px solid var(--color-border-ui);
+      }
+
+      button,
+      .url-action-button,
+      .btn {
+        min-height: 44px;
+      }
+
+      input,
+      select {
+        min-height: 44px;
       }
     }
 

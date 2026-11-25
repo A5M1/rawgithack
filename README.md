@@ -163,6 +163,24 @@ Never commit the connection string. If it has been exposed, rotate the
 database password in MongoDB Atlas. Vercel Functions use dynamic IPs, so the
 Atlas network access list normally needs `0.0.0.0/0` (or a restricted proxy).
 
+If the login page says **“Authentication database is unavailable”**, the app
+reached MongoDB but the connection failed. Check the Vercel logs for the
+`database_error` security event, then verify locally:
+
+```sh
+MONGODB_URI='mongodb+srv://...' MONGODB_DB=githack npm run check-db
+```
+
+Common causes:
+
+- Atlas password was rotated but the Vercel `MONGODB_URI` was not updated
+- Special characters in the password are not URL-encoded
+- The Atlas database user lacks access to the `githack` database
+- Atlas network access does not allow Vercel
+- The Atlas cluster is paused or unreachable
+- The environment variable was added only to Preview/Development, not Production
+- The environment variable was changed without redeploying
+
 Create an admin from your machine (there is no public signup):
 
 ```sh
@@ -223,12 +241,14 @@ https://your-host/s/Ab3dE9xQ
 
 Short links are public, proxy the file directly, and use the short id as their
 cache tag (`pAb3dE9xQ`). They can be created from GitHub/GitLab/Bitbucket/
-Gitea/Codeberg URLs or from generated githack URLs, and can be deleted from the
+Gitea/Codeberg URLs or from generated public URLs, and can be deleted from the
 user's space.
 
 The dashboard also accepts an optional custom name (`2-64` characters:
 letters, numbers, dash or underscore), producing links such as
-`https://your-host/s/my-file.js`. Custom names are unique.
+`https://your-host/s/my-file.js`. Custom names are unique. If no custom name is
+supplied, the legacy public URL on this instance is returned instead and no
+`/s/` record is created.
 
 If `MONGODB_URI` is not set, authentication and short links are disabled and
 the public homepage is served without login.

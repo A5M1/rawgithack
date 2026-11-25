@@ -252,7 +252,7 @@ The raw session token is only in the HttpOnly cookie
 
 ```js
 {
-  _id: String,             // 8-char random ID or custom 2-64 char name
+  _id: String,             // custom 2-64 char name (or legacy random ID)
   url: String,             // original public/source URL
   origin: String,          // upstream host
   path: String,            // upstream path
@@ -355,7 +355,8 @@ to allow another legacy registration.
 - `cdn` selects production (immutable) or development caching for source URLs.
 - `slug` is optional; if present it must match `[A-Za-z0-9_-]{2,64}` and be
   unique.
-- If no slug is supplied, an 8-character random ID is used.
+- If no slug is supplied, the API returns the legacy public URL on this
+  instance and does not create a short-link record.
 - The record stores the upstream origin, path, query, MIME type, and cache mode.
 
 ### Serving
