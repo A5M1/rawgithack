@@ -1,5 +1,5 @@
 <!--# set var="title" value="CDN for your source code" -->
-<!--# set var="description" value="rawgit.hack - ${title}" -->
+<!--# set var="description" value="${rg_site_name} - ${title}" -->
 
 <!--# include file="internal/pre.html" -->
 
@@ -188,7 +188,7 @@ pre { overflow-x: auto; }
         When you request a file from source control hosting services, they are usually served (in the case of JavaScript, HTML, CSS, and some other file types) with a <code>Content-Type</code> of <code>text/plain</code>. As a result, most modern browsers won't actually interpret it as JavaScript, HTML, or CSS. Hosts do this to discourage using repos for static file hosting, since serving raw files is relatively inefficient.
       </p>
       <p>
-        rawgit.hack acts as a caching proxy: it forwards requests to the corresponding service, relays responses to your browser with the correct <code>Content-Type</code> headers, and caches them — briefly for development URLs, permanently for CDN URLs. The result is quick and easy static file hosting right from a repo.
+        <!--# echo var="rg_site_name" default="rawgit.hack" --> acts as a caching proxy: it forwards requests to the corresponding service, relays responses to your browser with the correct <code>Content-Type</code> headers, and caches them — briefly for development URLs, permanently for CDN URLs. The result is quick and easy static file hosting right from a repo.
       </p>
     </div>
   </details>
@@ -197,10 +197,10 @@ pre { overflow-x: auto; }
     <summary>How are HTML files handled?</summary>
     <div class="body">
       <p>
-        rawgit.hack serves HTML as-is, without any filtering. This has been abused to host phishing pages, which causes the service to get flagged by browsers and antivirus software.
+        <!--# echo var="rg_site_name" default="rawgit.hack" --> serves HTML as-is, without any filtering. This has been abused to host phishing pages, which causes the service to get flagged by browsers and antivirus software.
       </p>
       <p>
-        To mitigate this, rawgit.hack shows a brief confirmation page before opening any HTML file — it displays the destination URL and asks you to confirm. After confirming, the notice won't appear again for any page in the same repository for 24 hours.
+        To mitigate this, <!--# echo var="rg_site_name" default="rawgit.hack" --> shows a brief confirmation page before opening any HTML file — it displays the destination URL and asks you to confirm. After confirming, the notice won't appear again for any page in the same repository for 24 hours.
       </p>
       <p>
         Non-HTML files are not affected. Neither are non-browser clients (curl, wget, etc.). For browser automation tools and any other cases there are multiple ways to bypass the confirmation:
@@ -222,7 +222,7 @@ pre { overflow-x: auto; }
         <li><a href="https://gitea.com/">Gitea</a></li>
         <li><a href="https://codeberg.org/">Codeberg</a></li>
       </ul>
-      <p>rawgit.hack is not affiliated with any of them — please don't contact their support for rawgit.hack issues.</p>
+      <p><!--# echo var="rg_site_name" default="rawgit.hack" --> is not affiliated with any of them — please don't contact their support for <!--# echo var="rg_site_name" default="rawgit.hack" --> issues.</p>
     </div>
   </details>
 
@@ -251,10 +251,10 @@ pre { overflow-x: auto; }
     <summary>Should I use this if I need guaranteed 100% uptime?</summary>
     <div class="body">
       <p>
-        rawgit.hack is a free service with no formal uptime or support guarantees — network issues and the occasional outage are real possibilities. That said, URLs are backed by Cloudflare's global cache, so even if the origin goes down, your files keep being served.
+        <!--# echo var="rg_site_name" default="rawgit.hack" --> is a free service with no formal uptime or support guarantees — network issues and the occasional outage are real possibilities. That said, URLs are backed by Cloudflare's global cache, so even if the origin goes down, your files keep being served.
       </p>
       <p>
-        The service has been running since 2013 — over a decade — without major outages. You can check the <a href="https://status.githack.com/?r=neoascetic/raw.githack.com-monitor">uptime stats</a> and decide for yourself. Keep in mind that most of the time issues are caused by the source code hosting services themselves, not rawgit.hack.
+        The service has been running since 2013 — over a decade — without major outages. You can check the <a href="https://status.githack.com/?r=neoascetic/raw.githack.com-monitor">uptime stats</a> and decide for yourself. Keep in mind that most of the time issues are caused by the source code hosting services themselves, not <!--# echo var="rg_site_name" default="rawgit.hack" -->.
       </p>
     </div>
   </details>
@@ -263,7 +263,7 @@ pre { overflow-x: auto; }
     <summary>How does this relate to RawGit?</summary>
     <div class="body">
       <p>
-        RawGit was a similar, now defunct service that inspired rawgit.hack. The main difference is in implementation: instead of a Node.js application, rawgit.hack is built entirely on nginx — which makes it simpler, faster, and easier to maintain.
+        RawGit was a similar, now defunct service that inspired <!--# echo var="rg_site_name" default="rawgit.hack" -->. The main difference is in implementation: instead of a Node.js application, <!--# echo var="rg_site_name" default="rawgit.hack" --> is built entirely on nginx — which makes it simpler, faster, and easier to maintain.
       </p>
     </div>
   </details>

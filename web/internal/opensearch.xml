@@ -1,7 +1,7 @@
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
-  <ShortName>rawgit.hack</ShortName>
+  <ShortName><!--# echo var="rg_site_name" default="rawgit.hack" --></ShortName>
   <Description>CDN for your source code. Type in GitHub|Bitbucket|GitLab|Gitea|Codeberg URL.</Description>
   <InputEncoding>UTF-8</InputEncoding>
-  <Url type="text/html" method="get" template="https://raw.githack.com/?url={searchTerms}"/>
-  <moz:SearchForm>https://raw.githack.com</moz:SearchForm>
+  <Url type="text/html" method="get" template="https://<!--# echo var="rg_canonical_host" default="raw.githack.com" -->/?url={searchTerms}"/>
+  <moz:SearchForm>https://<!--# echo var="rg_canonical_host" default="raw.githack.com" --></moz:SearchForm>
 </OpenSearchDescription>
