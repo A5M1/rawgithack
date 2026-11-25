@@ -9,7 +9,7 @@ It is **not** the upstream project, and it is not affiliated with or endorsed
 by rawgit.hack, its maintainer, or any of the source-hosting services. The
 original project and its licence remain the work of their respective authors.
 
-The core proxy behaviour is preserved, but this fork adds:
+The core proxy behavior is preserved, but this fork adds:
 
 - A Vercel/Express deployment (the legacy nginx setup has been removed)
 - MongoDB-backed users, sessions and one-time registration invites
