@@ -35,6 +35,10 @@
   color: var(--color-error);
   text-align: center;
 }
+.auth-notice {
+  color: var(--color-success);
+  text-align: center;
+}
 </style>
 
 <p class="hero">
@@ -45,6 +49,9 @@
 <div class="auth">
   <!--# if expr="$error = /.+/" -->
   <p class="auth-error"><!--# echo var="error" --></p>
+  <!--# endif -->
+  <!--# if expr="$notice = /.+/" -->
+  <p class="auth-notice"><!--# echo var="notice" --></p>
   <!--# endif -->
 
   <form method="POST" action="/login">
@@ -64,6 +71,10 @@
   </form>
 
   <p style="text-align: center; color: var(--color-text-muted); margin-top: 1.2em;">
+    <a href="/recover">Use a recovery code</a>
+  </p>
+
+  <p style="text-align: center; color: var(--color-text-muted); margin-top: .4em;">
     Have an invite? <a href="/register">Register</a>
   </p>
 </div>

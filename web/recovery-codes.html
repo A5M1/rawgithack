@@ -1,0 +1,101 @@
+<!--# set var="title" value="Recovery codes" -->
+<!--# set var="description" value="${rg_site_name} - recovery codes" -->
+
+<!--# include file="internal/pre.html" -->
+
+<style>
+.recovery {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.recovery pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-ui);
+  padding: 1em;
+  font-size: 1.05em;
+  line-height: 1.8;
+  overflow-x: auto;
+  user-select: all;
+}
+.recovery .actions {
+  display: flex;
+  gap: .5em;
+  flex-wrap: wrap;
+  margin: 1em 0 1.5em;
+}
+.recovery .confirm-box {
+  border: 1px solid var(--color-border-ui);
+  padding: 1em;
+}
+.recovery .confirm-box label {
+  display: block;
+  margin: .6em 0;
+}
+.recovery .confirm-box input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 260px;
+  padding: .6em;
+  border: 1px solid var(--color-border-ui);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.recovery .error {
+  color: var(--color-error);
+}
+.recovery .warning {
+  color: var(--color-text-muted);
+}
+.recovery button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .recovery pre { font-size: .95em; }
+  .recovery .actions { flex-direction: column; }
+  .recovery .actions button { width: 100%; }
+}
+</style>
+
+<p class="hero">
+  <strong>Save your recovery codes</strong>
+  <span class="desc">These codes are the only way to recover your account if you lose your password.</span>
+</p>
+
+<div class="recovery">
+  <p class="warning">
+    Each code can be used once. Store them somewhere safe — a password manager,
+    printed copy, or encrypted note. They will not be shown again.
+  </p>
+
+  <!--# if expr="$error = /.+/" -->
+  <p class="error"><!--# echo var="error" --></p>
+  <!--# endif -->
+
+  <pre id="recovery-codes"><!--# echo var="rg_recovery_codes" --></pre>
+
+  <div class="actions">
+    <button type="button" class="btn" id="copy-codes">copy all codes</button>
+    <button type="button" class="btn" id="download-codes">download as text</button>
+  </div>
+
+  <form method="POST" action="/recovery-codes" class="confirm-box">
+    <p><strong>Confirm you saved the codes</strong></p>
+
+    <label>
+      <input type="checkbox" name="confirm" value="1" required>
+      I saved these recovery codes somewhere safe.
+    </label>
+
+    <label>
+      Enter one of the codes above to verify:
+      <input type="text" name="code" autocomplete="off" autocapitalize="characters"
+             spellcheck="false" required>
+    </label>
+
+    <button type="submit" class="btn">Continue to dashboard</button>
+  </form>
+</div>
+
+<script src="/assets/recovery-codes.js" defer></script>
+
+<!--# include file="internal/post.html" -->

@@ -184,6 +184,8 @@ The same prefixes are used by the dashboard-generated URLs.
 | `/logout` | Yes/session | Clears session, redirects to `/login` |
 | `/register` | No | Enter an invite code |
 | `/register/<token>` | No | One-time registration form |
+| `/recover` | No | Recover an account with a recovery code |
+| `/recovery-codes` | Yes | Forced one-time display/confirmation of recovery codes |
 | `/dashboard` | Yes | SPA shell; client redirects to `/dashboard/links` |
 | `/dashboard/links` | Yes | Create/list short links |
 | `/dashboard/account` | Yes | Account view |
@@ -200,6 +202,7 @@ The same prefixes are used by the dashboard-generated URLs.
 | `/purge` | Yes | `DELETE` cache-tag invalidation |
 | `/api/proxies` | Yes | `GET` list, `POST` create short link |
 | `/api/proxies/<id>` | Yes | `DELETE` a short link |
+| `/api/recovery-codes/regenerate` | Yes | Revoke old codes and generate a new set |
 | `/api/admin/users` | Admin | List users |
 | `/api/admin/users/<username>` | Admin | `GET`, `PATCH` role, `DELETE` |
 | `/api/admin/invites` | Admin | `GET` list, `POST` create |
@@ -224,6 +227,9 @@ Database name: `MONGODB_DB` (default `githack`).
   username: String,        // unique index
   passwordHash: String,    // scrypt$N$r$p$salt$hash
   role: "user" | "admin",
+  recoveryCodes: [{ hash, usedAt? }],
+  recoveryCodesGeneratedAt: Date,
+  recoveryCodesAcknowledgedAt?: Date,
   createdAt: Date,
   updatedAt?: Date
 }
@@ -242,6 +248,7 @@ a 16-byte random salt, and a 64-byte derived key.
   _id: String,             // SHA-256 of the cookie token
   username: String,
   expiresAt: Date          // TTL index, expireAfterSeconds: 0
+  pendingRecoveryCodes?: [String] // only until the user confirms saving them
 }
 ```
 
@@ -475,7 +482,8 @@ flowchart TD
 - Hot-file detection is per-instance and therefore approximate.
 - Vercel Functions impose platform limits on request/response size and
   execution duration.
-- There is no password reset or email verification flow.
+- There is no email-based password reset; recovery codes are the only reset
+  path.
 - Deleting users is destructive: sessions, proxies, and ownership records are
   removed.
 
@@ -496,6 +504,10 @@ flowchart TD
 │   ├── config.js             Host/MIME/cache tables and hot-file counter
 │   ├── db.js                 MongoDB store
 │   └── ssi.js                SSI renderer
+├── webpack.config.js         Client bundle configuration
+├── src/client/
+│   ├── dashboard.js          Dashboard SPA module
+│   └── recovery-codes.js     Recovery-code UI module
 ├── scripts/
 │   └── create-user.js        CLI user creation (supports --admin)
 ├── test/
@@ -503,10 +515,12 @@ flowchart TD
 └── web/
     ├── landing.html          Anonymous landing page
     ├── login.html            Sign-in page
+    ├── recover.html          Recovery-code reset form
+    ├── recovery-codes.html   Forced recovery-code save page
     ├── register-start.html   Invite code entry
     ├── register.html         Invite registration form
     ├── dashboard.html        Dashboard SPA shell
-    ├── index.html            Legacy public homepage (no-Mongo mode)
+    ├── dist/                 Webpack production bundles (generated)
     └── internal/
         ├── pre.html          Shared head/header/theme
         ├── post.html         Shared footer

@@ -200,6 +200,22 @@ Users are stored in `<MONGODB_DB>.users` with scrypt password hashes. Sessions
 are server-side documents in `.sessions` with a TTL index and are sent as an
 HttpOnly `__githack_session` cookie.
 
+#### Recovery codes
+
+On the first sign-in after this feature is enabled, every user is redirected to
+`/recovery-codes` and must save their one-time recovery codes. The page does not
+let them continue until they:
+
+1. Confirm they saved the codes, and
+2. Enter one of the generated codes to verify it.
+
+Codes are stored only as hashes. Each code can be used once at `/recover` to
+reset a password. A successful recovery invalidates all sessions and recovery
+codes; the next sign-in generates a fresh set.
+
+Users can revoke their current codes and generate a new set at any time from
+**Dashboard → Account → Recovery codes**.
+
 #### Pages and per-user paths
 
 | Path | Purpose |

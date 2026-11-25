@@ -103,8 +103,8 @@ class FakeStore {
     this.registrationUsed = false;
   }
 
-  async createSession(hash, username, expiresAt) {
-    this.sessions.set(hash, { username, expiresAt });
+  async createSession(hash, username, expiresAt, extra = {}) {
+    this.sessions.set(hash, { username, expiresAt, ...extra });
   }
 
   async getSession(hash) {
@@ -113,6 +113,63 @@ class FakeStore {
 
   async deleteSession(hash) {
     this.sessions.delete(hash);
+  }
+
+  async deleteSessionsForUser(username) {
+    for (const [hash, session] of this.sessions) {
+      if (session.username === username) this.sessions.delete(hash);
+    }
+  }
+
+  async setSessionRecoveryCodes(hash, codes) {
+    const session = this.sessions.get(hash);
+    if (session) session.pendingRecoveryCodes = codes;
+  }
+
+  async clearSessionRecoveryCodes(hash) {
+    const session = this.sessions.get(hash);
+    if (session) delete session.pendingRecoveryCodes;
+  }
+
+  async setRecoveryCodes(username, codes) {
+    const user = this.users.get(username);
+    if (!user) return false;
+    user.recoveryCodes = codes;
+    user.recoveryCodesGeneratedAt = new Date();
+    delete user.recoveryCodesAcknowledgedAt;
+    return true;
+  }
+
+  async acknowledgeRecoveryCodes(username) {
+    const user = this.users.get(username);
+    if (!user) return false;
+    user.recoveryCodesAcknowledgedAt = new Date();
+    return true;
+  }
+
+  async consumeRecoveryCode(username, codeHash) {
+    const user = this.users.get(username);
+    const code = user?.recoveryCodes?.find(
+      (entry) => entry.hash === codeHash && !entry.usedAt,
+    );
+    if (!code) return false;
+    code.usedAt = new Date();
+    return true;
+  }
+
+  async updatePassword(username, passwordHash) {
+    const user = this.users.get(username);
+    if (!user) return false;
+    user.passwordHash = passwordHash;
+    return true;
+  }
+
+  async resetRecoveryCodes(username) {
+    const user = this.users.get(username);
+    if (!user) return;
+    delete user.recoveryCodes;
+    delete user.recoveryCodesGeneratedAt;
+    delete user.recoveryCodesAcknowledgedAt;
   }
 
   async createProxy(record) {
@@ -543,6 +600,7 @@ test('dashboard auth protects pages while short links stay public', async () => 
   store.users.set('alice', {
     username: 'alice',
     passwordHash: await hashPassword('correct horse'),
+    recoveryCodesAcknowledgedAt: new Date(),
   });
   currentStore = store;
 
@@ -696,12 +754,12 @@ test('secret registration URL works exactly once', async () => {
       body: 'username=alice&password=longpassword&confirm=longpassword',
     });
     assert.equal(created.status, 303);
-    assert.equal(created.headers.location, '/dashboard');
+    assert.equal(created.headers.location, '/recovery-codes');
 
     const cookie = created.headers['set-cookie'][0].split(';')[0];
-    const dashboard = await request('/dashboard', { headers: { Cookie: cookie } });
-    assert.equal(dashboard.status, 200);
-    assert.match(dashboard.body, /const VIEWER = 'alice'/);
+    const recovery = await request('/recovery-codes', { headers: { Cookie: cookie } });
+    assert.equal(recovery.status, 200);
+    assert.match(recovery.body, /Save your recovery codes/);
 
     const reuse = await request('/register/one-time-secret');
     assert.equal(reuse.status, 404);
@@ -725,12 +783,14 @@ test('admin invites, admin pages and per-user subdirectories', async () => {
     username: 'admin',
     passwordHash: await hashPassword('admin-password'),
     role: 'admin',
+    recoveryCodesAcknowledgedAt: new Date(),
     createdAt: new Date(),
   });
   store.users.set('bob', {
     username: 'bob',
     passwordHash: await hashPassword('bob-password'),
     role: 'user',
+    recoveryCodesAcknowledgedAt: new Date(),
     createdAt: new Date(),
   });
   currentStore = store;

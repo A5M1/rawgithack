@@ -1,5 +1,5 @@
-<!--# set var="title" value="RAWGITHACK CDN" -->
-<!--# set var="description" value="${rg_site_name} - a self-hosted rawgit.hack fork" -->
+<!--# set var="title" value="Self-hosted source CDN" -->
+<!--# set var="description" value="${rg_site_name} - self-hosted source CDN" -->
 
 <!--# include file="internal/pre.html" -->
 
@@ -47,8 +47,8 @@
 </style>
 
 <p class="hero">
-  <strong><!--# echo var="rg_site_name" default="rawgit.hack" --></strong>
-  <span class="desc">A fork of rawgit.hack.</span>
+  <strong><!--# echo var="rg_site_name" default="this instance" --></strong>
+  <span class="desc">A self-hosted source CDN.</span>
 </p>
 
 <div class="landing">
@@ -62,7 +62,7 @@
 
   <ul>
     <li>
-      It runs on this domain, independently from the original rawgit.hack service.
+      It runs on this domain, independently from the upstream service.
     </li>
     <li>
       It uses a Vercel/Express deployment with MongoDB instead of the original nginx-only setup.
@@ -84,7 +84,7 @@
   </ul>
 
   <p class="muted">
-    This instance is not affiliated with rawgit.hack or any of the source-hosting services.
+    This instance is not affiliated with the upstream project or any of the source-hosting services.
   </p>
 
   <p class="cta">
