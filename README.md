@@ -242,4 +242,4 @@ Within testing, this fork is not vulnerable (to the best of my knowledge), to an
 All hail freedom, 
 with lots of love, ava <3. 
 
-also if you don't think its right to use assistive ai in code, ive been programming since i was 7 and im not a fucking neanderthal troglodyte. slop code is going to a 6 month bootcamp and leaking hundreds of thousands of women's personal information because of an unsecured firebaase db iirc. so in th words of Linus Torvalds "fuck you" 
+also if you don't think its right to use assistive ai in code, ive been programming since i was 7 and im not a fucking neanderthal troglodyte. slop code is going to a 6 month bootcamp and leaking hundreds of thousands of women's personal information because of an unsecured firebaase db iirc. so in the words of Linus Torvalds "fuck you" 
